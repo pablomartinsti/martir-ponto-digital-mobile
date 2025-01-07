@@ -10,10 +10,14 @@ export default function RecordPoint() {
   const [userName, setUserName] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState<string>("");
   const [currentTime, setCurrentTime] = useState<string>("");
-  const [elapsedTime, setElapsedTime] = useState(0); // Tempo decorrido
-  const [timerPaused, setTimerPaused] = useState(true); // Controle do cronômetro
-  const [isWorking, setIsWorking] = useState(false);
-  const [isOnLunch, setIsOnLunch] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [timerPaused, setTimerPaused] = useState(true);
+  const [status, setStatus] = useState({
+    clockIn: false, // Jornada iniciada
+    lunchStart: false, // Saída para almoço
+    lunchEnd: false, // Retorno do almoço
+    clockOut: false, // Jornada finalizada
+  });
   const router = useRouter();
 
   // Recupera o nome do usuário
@@ -54,8 +58,8 @@ export default function RecordPoint() {
     return () => clearInterval(interval);
   }, []);
 
-  // Lógica do cronômetro
   useEffect(() => {
+    console.log("Timer Paused:", timerPaused);
     let timer: NodeJS.Timer | null = null;
 
     if (!timerPaused) {
@@ -82,26 +86,13 @@ export default function RecordPoint() {
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Ações dos botões
   const startWorkDay = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const employeeId = await AsyncStorage.getItem("employeeId");
-      const lastWorkDate = await AsyncStorage.getItem("lastWorkDate"); // Data da última jornada
 
       if (!token || !employeeId) {
         Alert.alert("Erro", "Usuário não autenticado.");
-        return;
-      }
-
-      const today = new Date().toISOString().split("T")[0];
-
-      // Verifica se a última jornada foi no mesmo dia
-      if (lastWorkDate === today) {
-        Alert.alert(
-          "Aviso",
-          "Você já bateu ponto hoje. Aproveite seu descanso!"
-        );
         return;
       }
 
@@ -127,17 +118,15 @@ export default function RecordPoint() {
       if (response.status === 201 || response.status === 200) {
         const { _id: recordId } = response.data;
         await AsyncStorage.setItem("recordId", recordId);
-        setIsWorking(true);
-        setIsOnLunch(false);
-        setElapsedTime(0); // Reinicia o cronômetro
-        setTimerPaused(false); // Inicia o cronômetro
+        setTimerPaused(false);
+        setStatus((prev) => ({ ...prev, clockIn: true })); // Atualiza o estado
         Alert.alert("Sucesso", "Jornada de trabalho iniciada!");
       } else {
         Alert.alert("Erro", "Não foi possível iniciar a jornada.");
       }
     } catch (error) {
       console.error("Erro ao iniciar jornada:", error);
-      Alert.alert("Erro", "Não foi possível iniciar a jornada.");
+      Alert.alert("Alerta", "Você já concluir sua jornada hoje!");
     }
   };
 
@@ -165,8 +154,8 @@ export default function RecordPoint() {
       );
 
       if (response.status === 201 || response.status === 200) {
-        setIsOnLunch(true);
-        setTimerPaused(true); // Pausa o cronômetro
+        setTimerPaused(true);
+        setStatus((prev) => ({ ...prev, lunchStart: true })); // Atualiza o estado
         Alert.alert("Sucesso", "Saída para almoço registrada!");
       } else {
         Alert.alert("Erro", "Não foi possível registrar a saída para almoço.");
@@ -201,8 +190,8 @@ export default function RecordPoint() {
       );
 
       if (response.status === 201 || response.status === 200) {
-        setIsOnLunch(false);
-        setTimerPaused(false); // Retoma o cronômetro
+        setTimerPaused(false);
+        setStatus((prev) => ({ ...prev, lunchEnd: true })); // Atualiza o estado
         Alert.alert("Sucesso", "Retorno do almoço registrado!");
       } else {
         Alert.alert("Erro", "Não foi possível registrar o retorno do almoço.");
@@ -237,15 +226,16 @@ export default function RecordPoint() {
       );
 
       if (response.status === 201 || response.status === 200) {
-        setIsWorking(false);
-        setIsOnLunch(false);
-        setTimerPaused(true); // Pausa o cronômetro ao finalizar
         setElapsedTime(0); // Reseta o cronômetro
+        setTimerPaused(true); // Pausa o cronômetro
+        setStatus({
+          clockIn: false,
+          lunchStart: false,
+          lunchEnd: false,
+          clockOut: false,
+        }); // Reseta o status
         await AsyncStorage.removeItem("recordId");
 
-        // Salva a data atual como última jornada
-        const today = new Date().toISOString().split("T")[0];
-        await AsyncStorage.setItem("lastWorkDate", today);
         Alert.alert("Sucesso", "Jornada finalizada!");
       } else {
         Alert.alert("Erro", "Não foi possível finalizar a jornada.");
@@ -280,21 +270,23 @@ export default function RecordPoint() {
         <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
       </View>
 
-      {!isWorking ? (
+      {!status.clockIn ? (
+        // Botão para iniciar a jornada
         <TouchableOpacity style={styles.button} onPress={startWorkDay}>
           <Text style={styles.buttonText}>Iniciar Jornada</Text>
         </TouchableOpacity>
-      ) : isOnLunch ? (
+      ) : !status.lunchStart ? (
+        // Botão para saída para almoço
+        <TouchableOpacity style={styles.button} onPress={startLunch}>
+          <Text style={styles.buttonText}>Saída para Almoço</Text>
+        </TouchableOpacity>
+      ) : !status.lunchEnd ? (
+        // Botão para retorno do almoço
         <TouchableOpacity style={styles.button} onPress={returnFromLunch}>
           <Text style={styles.buttonText}>Retornar do Almoço</Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity style={styles.button} onPress={startLunch}>
-          <Text style={styles.buttonText}>Saída para Almoço</Text>
-        </TouchableOpacity>
-      )}
-
-      {isWorking && !isOnLunch && (
+        // Botão para finalizar jornada
         <TouchableOpacity
           style={styles.buttonFinalizar}
           onPress={finishWorkDay}
