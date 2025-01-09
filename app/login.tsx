@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import MaskInput from "react-native-mask-input";
 import api from "../services/api";
 import { useRouter } from "expo-router";
+import Button from "@/components/Button";
 
 // Tipo dos dados do formulário
 type FormData = {
@@ -168,17 +169,7 @@ const LoginScreen = () => {
           </View>
         )}
       />
-
-      {/* Botão de Login */}
-      <TouchableOpacity
-        style={[styles.button, isLoading && styles.buttonDisabled]}
-        onPress={handleSubmit(onSubmit)}
-        disabled={isLoading}
-      >
-        <Text style={styles.buttonText}>
-          {isLoading ? "Entrando..." : "Entrar"}
-        </Text>
-      </TouchableOpacity>
+      <Button title="Entrar" onPress={handleSubmit(onSubmit)} />
     </View>
   );
 };
@@ -219,22 +210,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: "left",
     alignSelf: "flex-start",
-  },
-  button: {
-    backgroundColor: "#E8B931",
-    padding: 15,
-    borderRadius: 8,
-    width: "100%",
-    alignItems: "center",
-    marginTop: 50,
-  },
-  buttonDisabled: {
-    backgroundColor: "#CCCCCC",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
   },
 });
 

@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import * as Location from "expo-location";
 import api from "@/services/api";
+import Button from "@/components/Button";
 
 export default function RecordPoint() {
   const [userName, setUserName] = useState<string | null>(null);
@@ -269,31 +270,23 @@ export default function RecordPoint() {
       <View style={styles.timer}>
         <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
       </View>
+      <View style={styles.view}>
+        {!status.clockIn ? (
+          // Botão para iniciar a jornada
 
-      {!status.clockIn ? (
-        // Botão para iniciar a jornada
-        <TouchableOpacity style={styles.button} onPress={startWorkDay}>
-          <Text style={styles.buttonText}>Iniciar Jornada</Text>
-        </TouchableOpacity>
-      ) : !status.lunchStart ? (
-        // Botão para saída para almoço
-        <TouchableOpacity style={styles.button} onPress={startLunch}>
-          <Text style={styles.buttonText}>Saída para Almoço</Text>
-        </TouchableOpacity>
-      ) : !status.lunchEnd ? (
-        // Botão para retorno do almoço
-        <TouchableOpacity style={styles.button} onPress={returnFromLunch}>
-          <Text style={styles.buttonText}>Retornar do Almoço</Text>
-        </TouchableOpacity>
-      ) : (
-        // Botão para finalizar jornada
-        <TouchableOpacity
-          style={styles.buttonFinalizar}
-          onPress={finishWorkDay}
-        >
-          <Text style={styles.buttonText}>Finalizar Jornada</Text>
-        </TouchableOpacity>
-      )}
+          <Button title="Iniciar Jornada" onPress={startWorkDay} />
+        ) : !status.lunchStart ? (
+          // Botão para saída para almoço
+          <Button title="Saída Almoço" onPress={startLunch} />
+        ) : !status.lunchEnd ? (
+          // Botão para retorno do almoço
+
+          <Button title="Retorno Almoço" onPress={returnFromLunch} />
+        ) : (
+          // Botão para finalizar jornada
+          <Button title="Finalizar Jornada" onPress={finishWorkDay} />
+        )}
+      </View>
 
       <View style={styles.menuContainer}>
         <TouchableOpacity
@@ -363,29 +356,6 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: "bold",
   },
-  button: {
-    backgroundColor: "#E8B931",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    width: "90%",
-    marginTop: 20,
-  },
-  buttonFinalizar: {
-    backgroundColor: "#ec0101",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    width: "90%",
-    marginTop: 20,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
   menuContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -400,5 +370,8 @@ const styles = StyleSheet.create({
   menuButton: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  view: {
+    width: "85%",
   },
 });

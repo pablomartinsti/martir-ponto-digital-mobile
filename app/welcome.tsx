@@ -1,50 +1,66 @@
 import React from "react";
-import { View, Text, Button, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
+import Button from "@/components/Button";
 
 export default function HomeScreen() {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Bem-vindo ao Ponto Martit!</Text>
+      <Text style={styles.title}>Bem-vindo ao Ponto Martir!</Text>
+
       <View>
-        <Text style={styles.caption}>Descrição do App</Text>
+        <Text style={styles.caption}>Sobre o Aplicativo</Text>
         <Text style={styles.description}>
-          Este aplicativo permite que você registre seu ponto de forma simples e
-          prática. Para isso, você deve estar dentro da empresa.
+          O Ponto Martir foi desenvolvido para simplificar o registro do seu
+          ponto. Com ele, você pode gerenciar sua jornada de trabalho de forma
+          prática e eficiente, diretamente do seu dispositivo móvel.
         </Text>
       </View>
+
       <View>
-        <Text style={styles.caption}>Funcionalidades</Text>
+        <Text style={styles.caption}>Principais Funcionalidades</Text>
         <Text style={styles.description}>
-          1. Bata o ponto ao chegar na empresa.
+          1. Registre sua entrada ao chegar na empresa.
         </Text>
         <Text style={styles.description}>
-          2. Registre sua saída para o almoço.
+          2. Registre sua saída para o intervalo de almoço.
         </Text>
         <Text style={styles.description}>
-          3. Registre seu retorno do almoço.
+          3. Registre seu retorno do intervalo de almoço.
         </Text>
         <Text style={styles.description}>
-          4. Bata o ponto ao finalizar sua jornada.
+          4. Finalize sua jornada com o registro de saída.
+        </Text>
+        <Text style={styles.description}>
+          5. Acesse relatórios detalhados de suas horas trabalhadas, com filtros
+          por dia, semana, mês e ano.
         </Text>
       </View>
+
       <View>
-        <Text style={styles.caption}>Regras de Uso</Text>
+        <Text style={styles.caption}>Regras de Utilização</Text>
         <Text style={styles.description}>
-          Você só poderá registrar o ponto dentro da área da empresa. Verifique
-          se está conectado à rede ou ao Wi-Fi da empresa.
+          Para registrar o ponto, você deve:
+        </Text>
+        <Text style={styles.description}>
+          - Estar dentro da área autorizada da empresa.
+        </Text>
+        <Text style={styles.description}>
+          - Autorizar o uso do GPS do seu celular para validar sua localização.
+        </Text>
+        <Text style={styles.description}>
+          - Certificar-se de estar conectado à rede Wi-Fi da empresa ou a uma
+          conexão válida.
         </Text>
       </View>
 
       <View style={styles.containerButton}>
-        <TouchableOpacity
-          style={styles.button}
+        <Button
+          title="Entendi e Continuar"
           onPress={() => router.push("/recordsPoint")}
-        >
-          <Text style={styles.button}>Entendi e Continuar</Text>
-        </TouchableOpacity>
+        />
       </View>
     </View>
   );
@@ -53,41 +69,35 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "space-around",
-    alignItems: "center",
+    justifyContent: "space-between", // Melhor espaçamento entre os elementos
+    alignItems: "flex-start",
     backgroundColor: "#011D4C",
-    padding: 20,
+    padding: 15,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28, // Aumenta levemente o tamanho da fonte para dar mais destaque
     fontWeight: "bold",
-    marginBottom: 20,
-    color: "#fff",
+    marginBottom: 15, // Reduz o espaçamento para melhor equilíbrio
+    color: "#E8B931", // Muda a cor do título para o amarelo principal para destaque
+    textAlign: "center", // Centraliza o título
   },
   caption: {
     color: "#E8B931",
-    fontSize: 24,
+    fontSize: 20, // Levemente menor que o título, mas ainda destacada
     fontWeight: "bold",
-    textAlign: "center",
+
+    marginBottom: 10, // Adiciona espaçamento abaixo do título da seção
   },
   description: {
     color: "#fff",
-    fontSize: 19,
+    fontSize: 16, // Reduzido levemente para diferenciar das legendas
+    textAlign: "justify", // Justifica o texto para uma aparência mais formal
+    marginBottom: 10, // Adiciona um espaço entre os parágrafos
   },
   containerButton: {
     width: "100%",
-    display: "flex",
     justifyContent: "center",
     alignItems: "center",
-  },
-  button: {
-    backgroundColor: "#E8B931",
-    color: "#fff",
-    fontSize: 30,
-    padding: 5,
-    width: "100%",
-    borderRadius: 8,
-    fontWeight: "bold",
-    textAlign: "center",
+    marginTop: 10, // Adiciona um espaçamento acima do botão
   },
 });
