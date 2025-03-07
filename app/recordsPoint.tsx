@@ -6,6 +6,7 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import * as Location from "expo-location";
 import api from "@/services/api";
 import Button from "@/components/Button";
+import MenuComponent from "@/components/Menu";
 
 export default function RecordPoint() {
   const [userName, setUserName] = useState<string | null>(null);
@@ -352,8 +353,8 @@ export default function RecordPoint() {
           <Button title="Finalizar Jornada" onPress={finishWorkDay} />
         )}
       </View>
-
-      <View style={styles.menuContainer}>
+      <MenuComponent />
+      {/*<View style={styles.menuContainer}>
         <TouchableOpacity
           style={styles.menuButton}
           onPress={() => Alert.alert("Menu", "Menu aberto!")}
@@ -364,7 +365,7 @@ export default function RecordPoint() {
         <TouchableOpacity style={styles.menuButton} onPress={logout}>
           <Icon name="logout" size={30} color="#fff" />
         </TouchableOpacity>
-      </View>
+      </View>*/}
     </View>
   );
 }
