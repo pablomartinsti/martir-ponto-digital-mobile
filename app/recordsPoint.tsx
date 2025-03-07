@@ -21,19 +21,32 @@ export default function RecordPoint() {
   });
   const router = useRouter();
 
-  // Recupera o nome do usuário
   useEffect(() => {
-    const fetchUserName = async () => {
+    const loadUserData = async () => {
       try {
+        const storedToken = await AsyncStorage.getItem("token");
+        const storedEmployeeId = await AsyncStorage.getItem("employeeId");
         const storedName = await AsyncStorage.getItem("employeeName");
+        const storedRecordId = await AsyncStorage.getItem("recordId");
+
+        if (!storedToken || !storedEmployeeId) {
+          Alert.alert("Erro", "Sessão expirada. Faça login novamente.");
+          router.push("/login");
+          return;
+        }
+
         setUserName(storedName || "Usuário");
+
+        // Recupera o recordId se existir (para continuar o fluxo corretamente)
+        if (storedRecordId) {
+          setStatus((prev) => ({ ...prev, clockIn: true }));
+        }
       } catch (error) {
-        console.error("Erro ao recuperar o nome do usuário:", error);
-        setUserName("Usuário");
+        console.error("Erro ao recuperar dados do usuário:", error);
       }
     };
 
-    fetchUserName();
+    loadUserData();
   }, []);
 
   // Atualiza data e hora em tempo real
@@ -61,18 +74,18 @@ export default function RecordPoint() {
 
   useEffect(() => {
     console.log("Timer Paused:", timerPaused);
-    let timer: NodeJS.Timer | null = null;
+    let timer: ReturnType<typeof setInterval> | null = null; // Permite ambos os tipos
 
     if (!timerPaused) {
       timer = setInterval(() => {
         setElapsedTime((prevTime) => prevTime + 1);
       }, 1000);
-    } else if (timer) {
-      clearInterval(timer);
     }
 
     return () => {
-      if (timer) clearInterval(timer);
+      if (timer !== null) {
+        clearInterval(timer);
+      }
     };
   }, [timerPaused]);
 
@@ -86,6 +99,45 @@ export default function RecordPoint() {
       .toString()
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+  useEffect(() => {
+    const loadStatusFromStorage = async () => {
+      try {
+        const storedStatus = await AsyncStorage.getItem("workStatus");
+        const storedElapsedTime = await AsyncStorage.getItem("elapsedTime");
+        const storedTimerPaused = await AsyncStorage.getItem("timerPaused");
+
+        if (storedStatus) {
+          setStatus(JSON.parse(storedStatus));
+        }
+
+        if (storedElapsedTime) {
+          setElapsedTime(parseInt(storedElapsedTime, 10));
+        }
+
+        if (storedTimerPaused) {
+          setTimerPaused(JSON.parse(storedTimerPaused));
+        }
+      } catch (error) {
+        console.error("Erro ao recuperar status do AsyncStorage:", error);
+      }
+    };
+
+    loadStatusFromStorage();
+  }, []);
+
+  useEffect(() => {
+    const saveStatusToStorage = async () => {
+      try {
+        await AsyncStorage.setItem("workStatus", JSON.stringify(status));
+        await AsyncStorage.setItem("elapsedTime", elapsedTime.toString());
+        await AsyncStorage.setItem("timerPaused", JSON.stringify(timerPaused));
+      } catch (error) {
+        console.error("Erro ao salvar status no AsyncStorage:", error);
+      }
+    };
+
+    saveStatusToStorage();
+  }, [status, elapsedTime, timerPaused]);
 
   const startWorkDay = async () => {
     try {
@@ -249,7 +301,7 @@ export default function RecordPoint() {
 
   const logout = async () => {
     try {
-      await AsyncStorage.clear();
+      AsyncStorage.clear();
       router.push("/login");
     } catch (error) {
       console.error("Erro ao sair:", error);
