@@ -28,6 +28,7 @@ export default function RecordPoint() {
         const storedEmployeeId = await AsyncStorage.getItem("employeeId");
         const storedName = await AsyncStorage.getItem("employeeName");
         const storedRecordId = await AsyncStorage.getItem("recordId");
+        const storedStartTime = await AsyncStorage.getItem("startTime");
 
         if (!storedToken || !storedEmployeeId) {
           Alert.alert("Erro", "Sessão expirada. Faça login novamente.");
@@ -40,6 +41,14 @@ export default function RecordPoint() {
         // Recupera o recordId se existir (para continuar o fluxo corretamente)
         if (storedRecordId) {
           setStatus((prev) => ({ ...prev, clockIn: true }));
+        }
+
+        if (storedStartTime) {
+          const startTime = parseInt(storedStartTime, 10);
+          const currentTime = new Date().getTime();
+          const elapsedSeconds = Math.floor((currentTime - startTime) / 1000); // 🔹 Calcula tempo decorrido
+          setElapsedTime(elapsedSeconds);
+          setTimerPaused(false);
         }
       } catch (error) {
         console.error("Erro ao recuperar dados do usuário:", error);
@@ -73,7 +82,6 @@ export default function RecordPoint() {
   }, []);
 
   useEffect(() => {
-    console.log("Timer Paused:", timerPaused);
     let timer: ReturnType<typeof setInterval> | null = null; // Permite ambos os tipos
 
     if (!timerPaused) {
@@ -170,6 +178,9 @@ export default function RecordPoint() {
 
       if (response.status === 201 || response.status === 200) {
         const { _id: recordId } = response.data;
+        const startTime = new Date().getTime(); // 🔹 Captura a hora de início
+        await AsyncStorage.setItem("startTime", startTime.toString()); // 🔹 Salva no AsyncStorage
+
         await AsyncStorage.setItem("recordId", recordId);
         setTimerPaused(false);
         setStatus((prev) => ({ ...prev, clockIn: true })); // Atualiza o estado
@@ -279,6 +290,9 @@ export default function RecordPoint() {
       );
 
       if (response.status === 201 || response.status === 200) {
+        await AsyncStorage.removeItem("startTime"); // 🔹 Remove a hora de início
+        await AsyncStorage.removeItem("recordId");
+
         setElapsedTime(0); // Reseta o cronômetro
         setTimerPaused(true); // Pausa o cronômetro
         setStatus({
@@ -287,7 +301,6 @@ export default function RecordPoint() {
           lunchEnd: false,
           clockOut: false,
         }); // Reseta o status
-        await AsyncStorage.removeItem("recordId");
 
         Alert.alert("Sucesso", "Jornada finalizada!");
       } else {
