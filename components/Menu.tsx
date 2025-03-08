@@ -68,7 +68,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => Alert.alert("Perfil")}
+              onPress={() => router.push("/weekFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Semanal</Text>
