@@ -10,6 +10,10 @@ import {
   StyleSheet,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import dayjs from "dayjs";
+import "dayjs/locale/pt-br"; // Importa o idioma português
+
+dayjs.locale("pt-br"); // Define o idioma globalmente
 
 const MenuComponent = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -76,7 +80,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => Alert.alert("Configurações")}
+              onPress={() => router.push("/monthFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Mês</Text>
