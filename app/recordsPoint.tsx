@@ -354,18 +354,6 @@ export default function RecordPoint() {
         )}
       </View>
       <MenuComponent />
-      {/*<View style={styles.menuContainer}>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => Alert.alert("Menu", "Menu aberto!")}
-        >
-          <Icon name="menu" size={30} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuButton} onPress={logout}>
-          <Icon name="logout" size={30} color="#fff" />
-        </TouchableOpacity>
-      </View>*/}
     </View>
   );
 }

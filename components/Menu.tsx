@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   View,
@@ -12,8 +14,14 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 const MenuComponent = () => {
   const [modalVisible, setModalVisible] = useState(false);
 
-  const logout = () => {
-    Alert.alert("Logout", "Você saiu da conta!");
+  const logout = async () => {
+    try {
+      AsyncStorage.clear();
+      router.push("/login");
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+      Alert.alert("Erro", "Não foi possível sair.");
+    }
   };
 
   return (
@@ -44,7 +52,15 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => Alert.alert("Página Inicial")}
+              onPress={() => router.push("/recordsPoint")}
+            >
+              <Icon name="work" size={30} color="#fff" />
+              <Text style={styles.modalText}>Iniciar jornada</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => router.push("/dayFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Dia</Text>
