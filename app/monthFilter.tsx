@@ -19,7 +19,9 @@ dayjs.locale("pt-br"); // Define o idioma globalmente
 export default function MonthFilter() {
   const [userName, setUserName] = useState<string | null>(null);
   const [monthStart, setMonthStart] = useState(dayjs().startOf("month")); // Primeiro dia do mês
-
+  const [totalPositiveHours, setTotalPositiveHours] = useState("00h 00m");
+  const [totalNegativeHours, setTotalNegativeHours] = useState("00h 00m");
+  const [finalBalance, setFinalBalance] = useState("00h 00m");
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -62,19 +64,29 @@ export default function MonthFilter() {
 
       console.log("✅ Resposta da API:", response.data);
 
-      if (
-        !response.data ||
-        !response.data.dailyResults ||
-        response.data.dailyResults.length === 0
-      ) {
-        setErrorMessage("Nenhum registro encontrado para essa semana.");
-      } else {
-        setRecords(response.data.dailyResults);
+      if (!response.data || !response.data.dailyResults) {
+        setErrorMessage("Nenhum registro encontrado para esse mês.");
+        setLoading(false);
+        return;
+      }
+
+      // 🔹 Atualiza os registros diários do mês
+      setRecords(response.data.dailyResults);
+
+      // 🔹 Atualiza os valores de horas mensais
+      if (response.data.monthlyResult) {
+        setTotalPositiveHours(
+          response.data.monthlyResult.totalPositiveHours || "00h 00m"
+        );
+        setTotalNegativeHours(
+          response.data.monthlyResult.totalNegativeHours || "00h 00m"
+        );
+        setFinalBalance(response.data.monthlyResult.finalBalance || "00h 00m");
       }
     } catch (error: any) {
       console.log("❌ Código de erro:", error.response?.status);
       if (error.response?.status === 404) {
-        setErrorMessage("Nenhum registro encontrado para essa semana.");
+        setErrorMessage("Nenhum registro encontrado para esse mês.");
       } else {
         setErrorMessage("Erro ao carregar registros.");
       }
@@ -135,6 +147,27 @@ export default function MonthFilter() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.summaryContainer}>
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryTitle}>Horas Positivas</Text>
+          <Text style={styles.summaryValue}>{totalPositiveHours}</Text>
+        </View>
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryTitle}>Horas Negativas</Text>
+          <Text style={styles.summaryValue}>{totalNegativeHours}</Text>
+        </View>
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryTitle}>Saldo Final</Text>
+          <Text
+            style={[
+              styles.summaryValue,
+              finalBalance.includes("-") ? styles.negative : styles.positive,
+            ]}
+          >
+            {finalBalance}
+          </Text>
+        </View>
+      </View>
       <View style={styles.border} />
 
       <View style={styles.content}>
@@ -192,7 +225,14 @@ export default function MonthFilter() {
                     </View>
                     <View style={styles.summaryBox}>
                       <Text style={styles.summaryTitle}>Saldo do dia</Text>
-                      <Text style={styles.summaryValue}>
+                      <Text
+                        style={[
+                          styles.summaryValue,
+                          record?.balance?.includes("-")
+                            ? styles.negative
+                            : styles.positive,
+                        ]}
+                      >
                         {record?.balance || "00:00"}
                       </Text>
                     </View>
@@ -226,7 +266,6 @@ const styles = StyleSheet.create({
   dateBox: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
   },
   dateText: {
     color: "#fff",
@@ -303,5 +342,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: "center",
     marginTop: 20,
+  },
+  summaryContainer: {
+    marginTop: 20,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#011D4C",
+    width: "90%",
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  positive: {
+    color: "#00ff15", // Verde para saldo positivo
+  },
+  negative: {
+    color: "#ff0000", // Vermelho para saldo negativo
   },
 });
