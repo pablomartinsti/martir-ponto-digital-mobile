@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import MenuComponent from "@/components/Menu";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,7 +20,9 @@ dayjs.extend(timezone);
 
 export default function DayFilter() {
   const [userName, setUserName] = useState<string | null>(null);
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState(
+    () => new Date(dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"))
+  );
   const [record, setRecord] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -50,11 +53,20 @@ export default function DayFilter() {
 
     try {
       const formattedDate = formatDate(date);
-      const apiUrl = `/time-records?startDate=${formattedDate}&endDate=${formattedDate}`;
+      const today = dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"); // 🔹 Garante a data correta no fuso BR
 
       console.log("📅 Buscando registros para:", formattedDate);
-      console.log("🌐 URL da API:", apiUrl);
+      console.log("📆 Data de hoje:", today);
 
+      if (formattedDate > today) {
+        setErrorMessage("Não é possível visualizar registros futuros.");
+        setLoading(false);
+        return;
+      }
+
+      const apiUrl = `/time-records?startDate=${formattedDate}&endDate=${formattedDate}`;
+
+      console.log("🌐 URL da API:", apiUrl);
       const response = await api.get(apiUrl);
 
       console.log("✅ Resposta da API:", response.data);
@@ -71,9 +83,8 @@ export default function DayFilter() {
     } catch (error: any) {
       console.log("❌ Código de erro:", error.response?.status);
 
-      // Se for erro 404, mostramos a mensagem personalizada em vez de erro
       if (error.response?.status === 404) {
-        setErrorMessage("Nenhum registro encontrado");
+        setErrorMessage("Nenhum registro encontrado.");
       } else {
         setErrorMessage("Erro ao carregar registros.");
       }
@@ -95,6 +106,13 @@ export default function DayFilter() {
     setDate((prevDate) => {
       const newDate = new Date(prevDate);
       newDate.setDate(newDate.getDate() + days);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Removendo a hora para comparar apenas a data
+
+      if (newDate > today) {
+        return prevDate; // 🔹 Impede de selecionar datas futuras
+      }
+
       return newDate;
     });
   };
@@ -109,8 +127,19 @@ export default function DayFilter() {
           <Icon name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.dateText}>{formatDate(date)}</Text>
-        <TouchableOpacity onPress={() => changeDate(1)}>
-          <Icon name="chevron-right" size={30} color="#fff" />
+        <TouchableOpacity
+          onPress={() => changeDate(1)}
+          disabled={dayjs(date).add(1, "day").isAfter(dayjs().startOf("day"))} // 🔹 Bloqueia futuras
+        >
+          <Icon
+            name="chevron-right"
+            size={30}
+            color={
+              dayjs(date).add(1, "day").isAfter(dayjs().startOf("day"))
+                ? "#777" // 🔹 Cor mais clara para indicar desabilitado
+                : "#fff"
+            }
+          />
         </TouchableOpacity>
       </View>
 
