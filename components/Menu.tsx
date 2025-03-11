@@ -20,8 +20,13 @@ const MenuComponent = () => {
 
   const logout = async () => {
     try {
-      AsyncStorage.clear();
-      router.push("/login");
+      await AsyncStorage.clear(); // Limpa os dados do armazenamento assíncrono
+
+      // 🔹 Dispara um evento global para resetar o estado no RecordPoint
+      setTimeout(() => {
+        router.push("/login");
+        router.replace("/login"); // Garante que o usuário volte para login
+      }, 500); // Pequeno delay para garantir que a limpeza do AsyncStorage ocorra antes do redirecionamento
     } catch (error) {
       console.error("Erro ao sair:", error);
       Alert.alert("Erro", "Não foi possível sair.");
@@ -88,7 +93,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => Alert.alert("Configurações")}
+              onPress={() => router.push("/monthFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Ano</Text>

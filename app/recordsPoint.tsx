@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { View, Text, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,42 +22,11 @@ export default function RecordPoint() {
   });
   const router = useRouter();
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const storedToken = await AsyncStorage.getItem("token");
-        const storedEmployeeId = await AsyncStorage.getItem("employeeId");
-        const storedName = await AsyncStorage.getItem("employeeName");
-        const storedRecordId = await AsyncStorage.getItem("recordId");
-        const storedStartTime = await AsyncStorage.getItem("startTime");
-
-        if (!storedToken || !storedEmployeeId) {
-          Alert.alert("Erro", "Sessão expirada. Faça login novamente.");
-          router.push("/login");
-          return;
-        }
-
-        setUserName(storedName || "Usuário");
-
-        // Recupera o recordId se existir (para continuar o fluxo corretamente)
-        if (storedRecordId) {
-          setStatus((prev) => ({ ...prev, clockIn: true }));
-        }
-
-        if (storedStartTime) {
-          const startTime = parseInt(storedStartTime, 10);
-          const currentTime = new Date().getTime();
-          const elapsedSeconds = Math.floor((currentTime - startTime) / 1000); // 🔹 Calcula tempo decorrido
-          setElapsedTime(elapsedSeconds);
-          setTimerPaused(false);
-        }
-      } catch (error) {
-        console.error("Erro ao recuperar dados do usuário:", error);
-      }
-    };
-
-    loadUserData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchWorkStatus();
+    }, [])
+  );
 
   // Atualiza data e hora em tempo real
   useEffect(() => {
@@ -97,6 +67,169 @@ export default function RecordPoint() {
     };
   }, [timerPaused]);
 
+  useEffect(() => {
+    fetchWorkStatus();
+  }, []);
+
+  useEffect(() => {
+    loadUserName();
+  }, []);
+
+  const loadUserName = async () => {
+    try {
+      const storedName = await AsyncStorage.getItem("employeeName");
+
+      if (storedName) {
+        // 🔹 Pega apenas o primeiro nome
+        const firstName = storedName.split(" ")[0];
+        setUserName(firstName);
+      } else {
+        setUserName("Usuário"); // Nome padrão caso não encontre no AsyncStorage
+      }
+    } catch (error) {
+      console.error("❌ Erro ao recuperar o nome do usuário:", error);
+      setUserName("Usuário");
+    }
+  };
+
+  const fetchWorkStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const employeeId = await AsyncStorage.getItem("employeeId");
+
+      if (!token || !employeeId) {
+        Alert.alert("Erro", "Usuário não autenticado.");
+        return;
+      }
+
+      console.log("🔄 Buscando status da jornada na API...");
+
+      const response = await api.get(`/time-records?period=day`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("📥 Dados da API recebidos:", response.data);
+
+      if (response.status === 200) {
+        const data = response.data.dailyResults[0];
+
+        if (!data) {
+          console.log(
+            "⚠ Nenhum registro encontrado para hoje. Resetando estado..."
+          );
+
+          Alert.alert(
+            "Iniciar Jornada",
+            "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
+          );
+
+          setStatus({
+            clockIn: false,
+            lunchStart: false,
+            lunchEnd: false,
+            clockOut: false,
+          });
+          setElapsedTime(0);
+          setTimerPaused(true);
+          await AsyncStorage.removeItem("recordId");
+          return;
+        }
+
+        console.log("✅ Registro encontrado:", data);
+
+        // 🔹 Se a jornada já foi finalizada, garantir que o botão volte para "Iniciar Jornada"
+        if (data.clockOut) {
+          console.log(
+            "🚀 Jornada já finalizada. Resetando estado para 'Iniciar Jornada'..."
+          );
+          setStatus({
+            clockIn: false,
+            lunchStart: false,
+            lunchEnd: false,
+            clockOut: false,
+          });
+          setElapsedTime(0);
+          setTimerPaused(true);
+          await AsyncStorage.removeItem("recordId");
+          return;
+        }
+
+        // 🔹 Caso contrário, definir o estado conforme os dados retornados pela API
+        setStatus({
+          clockIn: !!data.clockIn,
+          lunchStart: !!data.lunchStart,
+          lunchEnd: !!data.lunchEnd,
+          clockOut: !!data.clockOut,
+        });
+
+        await AsyncStorage.setItem("recordId", data._id);
+
+        const currentTime = new Date().getTime();
+        let elapsedSeconds = 0;
+
+        if (data.clockIn && !data.clockOut) {
+          let startTime = new Date(data.clockIn).getTime();
+          let pauseTime = data.lunchStart
+            ? new Date(data.lunchStart).getTime()
+            : null;
+          let resumeTime = data.lunchEnd
+            ? new Date(data.lunchEnd).getTime()
+            : null;
+
+          if (!data.lunchStart) {
+            elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+            setTimerPaused(false);
+          } else if (data.lunchStart && !data.lunchEnd) {
+            elapsedSeconds = Math.floor((pauseTime! - startTime) / 1000);
+            setTimerPaused(true);
+          } else if (data.lunchEnd) {
+            elapsedSeconds =
+              Math.floor((pauseTime! - startTime) / 1000) +
+              Math.floor((currentTime - resumeTime!) / 1000);
+            setTimerPaused(false);
+          }
+
+          setElapsedTime(elapsedSeconds);
+        } else {
+          setElapsedTime(0);
+          setTimerPaused(true);
+        }
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.message.includes("404")) {
+          console.warn(
+            "⚠ Nenhum registro de jornada encontrado para hoje. Resetando estado..."
+          );
+
+          Alert.alert(
+            "Iniciar Jornada",
+            "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
+          );
+
+          setStatus({
+            clockIn: false,
+            lunchStart: false,
+            lunchEnd: false,
+            clockOut: false,
+          });
+          setElapsedTime(0);
+          setTimerPaused(true);
+          await AsyncStorage.removeItem("recordId");
+          return;
+        }
+        console.error("❌ Erro ao buscar status da jornada:", error.message);
+        Alert.alert(
+          "Erro",
+          `Não foi possível recuperar o status da jornada: ${error.message}`
+        );
+      } else {
+        console.error("❌ Erro desconhecido:", error);
+        Alert.alert("Erro", "Não foi possível recuperar o status da jornada.");
+      }
+    }
+  };
+
   // Formata o tempo decorrido
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -107,45 +240,6 @@ export default function RecordPoint() {
       .toString()
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
-  useEffect(() => {
-    const loadStatusFromStorage = async () => {
-      try {
-        const storedStatus = await AsyncStorage.getItem("workStatus");
-        const storedElapsedTime = await AsyncStorage.getItem("elapsedTime");
-        const storedTimerPaused = await AsyncStorage.getItem("timerPaused");
-
-        if (storedStatus) {
-          setStatus(JSON.parse(storedStatus));
-        }
-
-        if (storedElapsedTime) {
-          setElapsedTime(parseInt(storedElapsedTime, 10));
-        }
-
-        if (storedTimerPaused) {
-          setTimerPaused(JSON.parse(storedTimerPaused));
-        }
-      } catch (error) {
-        console.error("Erro ao recuperar status do AsyncStorage:", error);
-      }
-    };
-
-    loadStatusFromStorage();
-  }, []);
-
-  useEffect(() => {
-    const saveStatusToStorage = async () => {
-      try {
-        await AsyncStorage.setItem("workStatus", JSON.stringify(status));
-        await AsyncStorage.setItem("elapsedTime", elapsedTime.toString());
-        await AsyncStorage.setItem("timerPaused", JSON.stringify(timerPaused));
-      } catch (error) {
-        console.error("Erro ao salvar status no AsyncStorage:", error);
-      }
-    };
-
-    saveStatusToStorage();
-  }, [status, elapsedTime, timerPaused]);
 
   const startWorkDay = async () => {
     try {
@@ -309,16 +403,6 @@ export default function RecordPoint() {
     } catch (error) {
       console.error("Erro ao finalizar jornada:", error);
       Alert.alert("Erro", "Não foi possível finalizar a jornada.");
-    }
-  };
-
-  const logout = async () => {
-    try {
-      AsyncStorage.clear();
-      router.push("/login");
-    } catch (error) {
-      console.error("Erro ao sair:", error);
-      Alert.alert("Erro", "Não foi possível sair.");
     }
   };
 
