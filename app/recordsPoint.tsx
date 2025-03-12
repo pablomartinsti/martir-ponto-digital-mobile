@@ -95,23 +95,26 @@ export default function RecordPoint() {
   const fetchWorkStatus = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
-      const employeeId = await AsyncStorage.getItem("employeeId");
 
-      if (!token || !employeeId) {
+      if (!token) {
         Alert.alert("Erro", "Usuário não autenticado.");
         return;
       }
+      const today = new Date().toISOString().split("T")[0];
 
-      console.log("🔄 Buscando status da jornada na API...");
+      console.log("🔄 Buscando status da jornada na API...", today);
 
-      const response = await api.get(`/time-records?period=day`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get(
+        `/time-records?period=day&startDate=${today}&endDate=${today}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       console.log("📥 Dados da API recebidos:", response.data);
 
       if (response.status === 200) {
-        const data = response.data.dailyResults[0];
+        const data = response.data.results[0].records[0];
 
         if (!data) {
           console.log(
