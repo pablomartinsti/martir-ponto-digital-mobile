@@ -354,8 +354,12 @@ const styles = StyleSheet.create({
   },
   positive: {
     color: "#00ff15", // Verde para saldo positivo
+    fontSize: 18,
+    fontWeight: "bold",
   },
   negative: {
     color: "#ff0000", // Vermelho para saldo negativo
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });

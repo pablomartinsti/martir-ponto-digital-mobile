@@ -49,7 +49,7 @@ export default function WeekFilter() {
     try {
       const startDate = weekStart.format("YYYY-MM-DD");
       const endDate = weekEnd.format("YYYY-MM-DD");
-      const apiUrl = `/time-records?startDate=${startDate}&endDate=${endDate}`;
+      const apiUrl = `/time-records?period=week&startDate=${startDate}&endDate=${endDate}`;
 
       console.log("📅 Buscando registros para:", startDate, "até", endDate);
       console.log("🌐 URL da API:", apiUrl);
@@ -60,12 +60,12 @@ export default function WeekFilter() {
 
       if (
         !response.data ||
-        !response.data.dailyResults ||
-        response.data.dailyResults.length === 0
+        !response.data.results ||
+        response.data.results.length === 0
       ) {
         setErrorMessage("Nenhum registro encontrado para essa semana.");
       } else {
-        setRecords(response.data.dailyResults);
+        setRecords(response.data.results[0].records || []);
       }
     } catch (error: any) {
       console.log("❌ Código de erro:", error.response?.status);
@@ -152,7 +152,8 @@ export default function WeekFilter() {
             {records.map((record, index) => (
               <View key={index} style={styles.containerReport}>
                 <Text style={styles.weekDay}>
-                  {weekDays[dayjs(record.date).day()]} - {record.date}
+                  {weekDays[dayjs(record.clockIn).day()]} -{" "}
+                  {dayjs(record.clockIn).format("DD/MM/YYYY")}
                 </Text>
 
                 <View style={styles.containerTime}>
@@ -185,16 +186,23 @@ export default function WeekFilter() {
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.containerSum}>
-                    <View style={styles.summaryBox}>
-                      <Text style={styles.summaryTitle}>Horas no dia</Text>
-                      <Text style={styles.summaryValue}>
+                  <View style={styles.containerBankHours}>
+                    <View style={styles.bankHoursBox}>
+                      <Text style={styles.bankHoursTitle}>Horas no dia</Text>
+                      <Text style={styles.bankHoursValue}>
                         {record?.workedHours || "00:00"}
                       </Text>
                     </View>
-                    <View style={styles.summaryBox}>
-                      <Text style={styles.summaryTitle}>Saldo do dia</Text>
-                      <Text style={styles.summaryValue}>
+                    <View style={styles.bankHoursBox}>
+                      <Text style={styles.bankHoursTitle}>Saldo do dia</Text>
+                      <Text
+                        style={[
+                          styles.bankHoursValue,
+                          record?.balance?.includes("-")
+                            ? styles.negative
+                            : styles.positive,
+                        ]}
+                      >
                         {record?.balance || "00:00"}
                       </Text>
                     </View>
@@ -279,31 +287,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 5,
   },
-  containerSum: {
+  containerBankHours: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
     marginTop: 20,
   },
-  summaryBox: {
+  bankHoursBox: {
     alignItems: "center",
     padding: 5,
     borderRadius: 8,
   },
-  summaryTitle: {
+  bankHoursTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#fff",
   },
-  summaryValue: {
+  bankHoursValue: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#fff",
   },
   errorText: {
-    color: "#ff4444",
+    color: "#fff",
     fontSize: 18,
     textAlign: "center",
     marginTop: 20,
+  },
+  positive: {
+    color: "#00ff15", // Verde para saldo positivo
+  },
+  negative: {
+    color: "#ff0000", // Vermelho para saldo negativo
   },
 });

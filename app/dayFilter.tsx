@@ -64,7 +64,7 @@ export default function DayFilter() {
         return;
       }
 
-      const apiUrl = `/time-records?startDate=${formattedDate}&endDate=${formattedDate}`;
+      const apiUrl = `/time-records?period=day&startDate=${formattedDate}&endDate=${formattedDate}`;
 
       console.log("🌐 URL da API:", apiUrl);
       const response = await api.get(apiUrl);
@@ -73,12 +73,12 @@ export default function DayFilter() {
 
       if (
         !response.data ||
-        !response.data.dailyResults ||
-        response.data.dailyResults.length === 0
+        !response.data.results ||
+        response.data.results.length === 0
       ) {
         setErrorMessage("Nenhum registro encontrado.");
       } else {
-        setRecord(response.data.dailyResults[0]);
+        setRecord(response.data.results[0].records[0] || null); // 🔹 Pega o primeiro registro válido do dia
       }
     } catch (error: any) {
       console.log("❌ Código de erro:", error.response?.status);
@@ -106,16 +106,19 @@ export default function DayFilter() {
     setDate((prevDate) => {
       const newDate = new Date(prevDate);
       newDate.setDate(newDate.getDate() + days);
+
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // Removendo a hora para comparar apenas a data
+      today.setHours(0, 0, 0, 0); // 🔹 Remove a hora para comparar apenas a data
 
       if (newDate > today) {
-        return prevDate; // 🔹 Impede de selecionar datas futuras
+        return prevDate; // 🔹 Impede seleção de datas futuras
       }
 
       return newDate;
     });
   };
+
+  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   return (
     <View style={styles.container}>
@@ -151,6 +154,14 @@ export default function DayFilter() {
         <Text style={styles.errorText}>{errorMessage}</Text>
       ) : (
         <View style={styles.containerReport}>
+          <Text style={styles.weekDay}>
+            {record?.clockIn
+              ? `${weekDays[dayjs(record.clockIn).day()]} - ${dayjs(
+                  record.clockIn
+                ).format("DD/MM/YYYY")}`
+              : "Data não disponível"}
+          </Text>
+
           <View style={styles.containerTime}>
             {/* Entrada */}
             <View style={styles.timeRecord}>
@@ -184,16 +195,23 @@ export default function DayFilter() {
           </View>
 
           {/* Informações de Horas Trabalhadas */}
-          <View style={styles.containerSum}>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryTitle}>Horas no dia</Text>
-              <Text style={styles.summaryValue}>
+          <View style={styles.containerBankHours}>
+            <View style={styles.bankHoursBox}>
+              <Text style={styles.bankHoursTitle}>Horas no dia</Text>
+              <Text style={styles.bankHoursValue}>
                 {record?.workedHours || "00:00"}
               </Text>
             </View>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryTitle}>Saldo do dia</Text>
-              <Text style={styles.summaryValue}>
+            <View style={styles.bankHoursBox}>
+              <Text style={styles.bankHoursTitle}>Saldo do dia</Text>
+              <Text
+                style={[
+                  styles.bankHoursValue,
+                  record?.balance?.includes("-")
+                    ? styles.negative
+                    : styles.positive,
+                ]}
+              >
                 {record?.balance || "00:00"}
               </Text>
             </View>
@@ -241,6 +259,12 @@ const styles = StyleSheet.create({
     padding: 8,
     borderColor: "#fff",
   },
+  weekDay: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 5,
+  },
   containerTime: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -256,23 +280,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 5,
   },
-  containerSum: {
+  containerBankHours: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
     marginTop: 20,
   },
-  summaryBox: {
+  bankHoursBox: {
     alignItems: "center",
     padding: 5,
     borderRadius: 8,
   },
-  summaryTitle: {
+  bankHoursTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#fff",
   },
-  summaryValue: {
+  bankHoursValue: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#fff",
@@ -282,5 +306,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: "center",
     marginTop: 20,
+  },
+  positive: {
+    color: "#00ff15", // Verde para saldo positivo
+  },
+  negative: {
+    color: "#ff0000", // Vermelho para saldo negativo
   },
 });
