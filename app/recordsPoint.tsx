@@ -7,6 +7,7 @@ import * as Location from "expo-location";
 import api from "@/services/api";
 import Button from "@/components/Button";
 import MenuComponent from "@/components/Menu";
+import globalStyles from "@/styles/globalStyles";
 
 export default function RecordPoint() {
   const [userName, setUserName] = useState<string | null>(null);
@@ -25,6 +26,7 @@ export default function RecordPoint() {
   useFocusEffect(
     useCallback(() => {
       fetchWorkStatus();
+      loadUserName();
     }, [])
   );
 
@@ -67,14 +69,6 @@ export default function RecordPoint() {
     };
   }, [timerPaused]);
 
-  useEffect(() => {
-    fetchWorkStatus();
-  }, []);
-
-  useEffect(() => {
-    loadUserName();
-  }, []);
-
   const loadUserName = async () => {
     try {
       const storedName = await AsyncStorage.getItem("employeeName");
@@ -102,16 +96,12 @@ export default function RecordPoint() {
       }
       const today = new Date().toISOString().split("T")[0];
 
-      console.log("🔄 Buscando status da jornada na API...", today);
-
       const response = await api.get(
         `/time-records?period=day&startDate=${today}&endDate=${today}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-
-      console.log("📥 Dados da API recebidos:", response.data);
 
       if (response.status === 200) {
         const data = response.data.results[0].records[0];
@@ -137,9 +127,6 @@ export default function RecordPoint() {
           await AsyncStorage.removeItem("recordId");
           return;
         }
-
-        console.log("✅ Registro encontrado:", data);
-
         // 🔹 Se a jornada já foi finalizada, garantir que o botão volte para "Iniciar Jornada"
         if (data.clockOut) {
           console.log(
@@ -413,16 +400,16 @@ export default function RecordPoint() {
     <View style={styles.container}>
       <Text style={styles.title}>Olá, {userName}!</Text>
 
-      <View style={styles.dateTimeContainer}>
-        <Text style={styles.dateText}>{currentDate}</Text>
-        <Text style={styles.timeText}>{currentTime}</Text>
+      <View style={styles.boxDate}>
+        <Text style={styles.Text}>{currentDate}</Text>
+        <Text style={styles.Text}>{currentTime}</Text>
       </View>
-      <View style={styles.border} />
+      <View style={globalStyles.border} />
 
-      <View style={styles.timer}>
-        <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
+      <View style={styles.boxClock}>
+        <Text style={styles.clockText}>{formatTime(elapsedTime)}</Text>
       </View>
-      <View style={styles.view}>
+      <View style={styles.boxButton}>
         {!status.clockIn ? (
           // Botão para iniciar a jornada
 
@@ -456,31 +443,20 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginTop: 20,
   },
-  dateTimeContainer: {
+  boxDate: {
     display: "flex",
     alignItems: "center",
     flexDirection: "row",
     gap: 50,
     marginTop: 50,
   },
-  dateText: {
+  Text: {
     color: "#fff",
     fontSize: 20,
     textAlign: "center",
   },
-  timeText: {
-    color: "#fff",
-    fontSize: 20,
-    textAlign: "center",
-    marginLeft: 10,
-  },
-  border: {
-    width: "100%",
-    borderBottomColor: "#fff",
-    borderBottomWidth: 1,
-    paddingBottom: 10,
-  },
-  timer: {
+
+  boxClock: {
     width: 300,
     height: 300,
     borderRadius: 150,
@@ -491,27 +467,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#011D4C",
     margin: 50,
   },
-  timerText: {
+  clockText: {
     color: "#fff",
     fontSize: 36,
     fontWeight: "bold",
   },
-  menuContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "100%",
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    position: "absolute",
-    bottom: 0,
-    backgroundColor: "#E8B931",
-  },
-  menuButton: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  view: {
+  boxButton: {
     width: "85%",
   },
 });

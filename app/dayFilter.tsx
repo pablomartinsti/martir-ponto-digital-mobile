@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
+import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
 import MenuComponent from "@/components/Menu";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -14,6 +7,7 @@ import api from "@/services/api";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import globalStyles from "@/styles/globalStyles";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -55,9 +49,6 @@ export default function DayFilter() {
       const formattedDate = formatDate(date);
       const today = dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"); // 🔹 Garante a data correta no fuso BR
 
-      console.log("📅 Buscando registros para:", formattedDate);
-      console.log("📆 Data de hoje:", today);
-
       if (formattedDate > today) {
         setErrorMessage("Não é possível visualizar registros futuros.");
         setLoading(false);
@@ -66,10 +57,7 @@ export default function DayFilter() {
 
       const apiUrl = `/time-records?period=day&startDate=${formattedDate}&endDate=${formattedDate}`;
 
-      console.log("🌐 URL da API:", apiUrl);
       const response = await api.get(apiUrl);
-
-      console.log("✅ Resposta da API:", response.data);
 
       if (
         !response.data ||
@@ -81,8 +69,6 @@ export default function DayFilter() {
         setRecord(response.data.results[0].records[0] || null); // 🔹 Pega o primeiro registro válido do dia
       }
     } catch (error: any) {
-      console.log("❌ Código de erro:", error.response?.status);
-
       if (error.response?.status === 404) {
         setErrorMessage("Nenhum registro encontrado.");
       } else {
@@ -121,15 +107,17 @@ export default function DayFilter() {
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Olá, {userName ? userName : "Usuário"}</Text>
+    <View style={globalStyles.container}>
+      <Text style={globalStyles.title}>
+        Olá, {userName ? userName : "Usuário"}
+      </Text>
 
       {/* Navegação de Data */}
-      <View style={styles.dateBox}>
+      <View style={globalStyles.containerFilter}>
         <TouchableOpacity onPress={() => changeDate(-1)}>
           <Icon name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.dateText}>{formatDate(date)}</Text>
+        <Text style={globalStyles.textFilter}>{formatDate(date)}</Text>
         <TouchableOpacity
           onPress={() => changeDate(1)}
           disabled={dayjs(date).add(1, "day").isAfter(dayjs().startOf("day"))} // 🔹 Bloqueia futuras
@@ -146,171 +134,84 @@ export default function DayFilter() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.border} />
+      <View style={globalStyles.border} />
+      <View style={globalStyles.content}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#fff" />
+        ) : errorMessage ? (
+          <Text style={globalStyles.errorText}>{errorMessage}</Text>
+        ) : (
+          <View style={globalStyles.containerReport}>
+            <Text style={globalStyles.weekDay}>
+              {record?.clockIn
+                ? `${weekDays[dayjs(record.clockIn).day()]} - ${dayjs(
+                    record.clockIn
+                  ).format("DD/MM/YYYY")}`
+                : "Data não disponível"}
+            </Text>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#fff" />
-      ) : errorMessage ? (
-        <Text style={styles.errorText}>{errorMessage}</Text>
-      ) : (
-        <View style={styles.containerReport}>
-          <Text style={styles.weekDay}>
-            {record?.clockIn
-              ? `${weekDays[dayjs(record.clockIn).day()]} - ${dayjs(
-                  record.clockIn
-                ).format("DD/MM/YYYY")}`
-              : "Data não disponível"}
-          </Text>
+            <View style={globalStyles.containerTime}>
+              {/* Entrada */}
+              <View style={globalStyles.boxTime}>
+                <View style={globalStyles.pointTime}>
+                  <Icon name="arrow-forward" size={30} color="#00ff15" />
+                  <Text style={globalStyles.timeText}>
+                    {formatTime(record?.clockIn)}
+                  </Text>
+                </View>
 
-          <View style={styles.containerTime}>
-            {/* Entrada */}
-            <View style={styles.timeRecord}>
-              <Icon name="arrow-forward" size={30} color="#00ff15" />
-              <Text style={styles.timeText}>{formatTime(record?.clockIn)}</Text>
-            </View>
+                {/* Saída para almoço */}
+                <View style={globalStyles.pointTime}>
+                  <Icon name="arrow-back" size={30} color="#ff0000" />
+                  <Text style={globalStyles.timeText}>
+                    {formatTime(record?.lunchStart)}
+                  </Text>
+                </View>
 
-            {/* Saída para almoço */}
-            <View style={styles.timeRecord}>
-              <Icon name="arrow-back" size={30} color="#ff0000" />
-              <Text style={styles.timeText}>
-                {formatTime(record?.lunchStart)}
-              </Text>
-            </View>
+                {/* Retorno do almoço */}
+                <View style={globalStyles.pointTime}>
+                  <Icon name="arrow-forward" size={30} color="#00ff15" />
+                  <Text style={globalStyles.timeText}>
+                    {formatTime(record?.lunchEnd)}
+                  </Text>
+                </View>
 
-            {/* Retorno do almoço */}
-            <View style={styles.timeRecord}>
-              <Icon name="arrow-forward" size={30} color="#00ff15" />
-              <Text style={styles.timeText}>
-                {formatTime(record?.lunchEnd)}
-              </Text>
-            </View>
-
-            {/* Saída final */}
-            <View style={styles.timeRecord}>
-              <Icon name="arrow-back" size={30} color="#ff0000" />
-              <Text style={styles.timeText}>
-                {formatTime(record?.clockOut)}
-              </Text>
+                {/* Saída final */}
+                <View style={globalStyles.pointTime}>
+                  <Icon name="arrow-back" size={30} color="#ff0000" />
+                  <Text style={globalStyles.timeText}>
+                    {formatTime(record?.clockOut)}
+                  </Text>
+                </View>
+              </View>
+              {/* Informações de Horas Trabalhadas */}
+              <View style={globalStyles.containerWorked}>
+                <View style={globalStyles.boxWorked}>
+                  <Text style={globalStyles.workedText}>Horas</Text>
+                  <Text style={globalStyles.workedValue}>
+                    {record?.workedHours || "00:00"}
+                  </Text>
+                </View>
+                <View style={globalStyles.boxWorked}>
+                  <Text style={globalStyles.workedText}>Saldo</Text>
+                  <Text
+                    style={[
+                      globalStyles.bankHoursValue,
+                      record?.balance?.includes("-")
+                        ? globalStyles.negative
+                        : globalStyles.positive,
+                    ]}
+                  >
+                    {record?.balance || "00:00"}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
-
-          {/* Informações de Horas Trabalhadas */}
-          <View style={styles.containerBankHours}>
-            <View style={styles.bankHoursBox}>
-              <Text style={styles.bankHoursTitle}>Horas no dia</Text>
-              <Text style={styles.bankHoursValue}>
-                {record?.workedHours || "00:00"}
-              </Text>
-            </View>
-            <View style={styles.bankHoursBox}>
-              <Text style={styles.bankHoursTitle}>Saldo do dia</Text>
-              <Text
-                style={[
-                  styles.bankHoursValue,
-                  record?.balance?.includes("-")
-                    ? styles.negative
-                    : styles.positive,
-                ]}
-              >
-                {record?.balance || "00:00"}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
+        )}
+      </View>
 
       <MenuComponent />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    backgroundColor: "#011D4C",
-    paddingTop: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 20,
-  },
-  dateBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  dateText: {
-    color: "#fff",
-    fontSize: 20,
-    marginHorizontal: 10,
-  },
-  border: {
-    width: "100%",
-    borderBottomColor: "#fff",
-    borderBottomWidth: 1,
-    marginBottom: 10,
-  },
-  containerReport: {
-    borderWidth: 1,
-    borderRadius: 5,
-    padding: 8,
-    borderColor: "#fff",
-  },
-  weekDay: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 5,
-  },
-  containerTime: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    flexWrap: "wrap",
-    marginTop: 20,
-  },
-  timeRecord: {
-    alignItems: "center",
-    marginHorizontal: 10,
-  },
-  timeText: {
-    color: "#fff",
-    fontSize: 18,
-    marginTop: 5,
-  },
-  containerBankHours: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginTop: 20,
-  },
-  bankHoursBox: {
-    alignItems: "center",
-    padding: 5,
-    borderRadius: 8,
-  },
-  bankHoursTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  bankHoursValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  errorText: {
-    color: "#fff",
-    fontSize: 18,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  positive: {
-    color: "#00ff15", // Verde para saldo positivo
-  },
-  negative: {
-    color: "#ff0000", // Vermelho para saldo negativo
-  },
-});

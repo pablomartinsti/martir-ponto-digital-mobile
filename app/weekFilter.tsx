@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
   ScrollView,
@@ -12,12 +11,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import api from "@/services/api";
 import dayjs from "dayjs";
+import globalStyles from "@/styles/globalStyles";
 
 export default function WeekFilter() {
   const [userName, setUserName] = useState<string | null>(null);
-  const [weekStart, setWeekStart] = useState(dayjs().startOf("week")); // Agora começa no domingo
-  const [weekEnd, setWeekEnd] = useState(weekStart.add(6, "day")); // Sempre termina no sábado
-
+  const [weekStart, setWeekStart] = useState(dayjs().day(0)); // Domingo
+  const [weekEnd, setWeekEnd] = useState(dayjs().day(6)); // Sábado
+  const [totalPositiveHours, setTotalPositiveHours] = useState("00h 00m");
+  const [totalNegativeHours, setTotalNegativeHours] = useState("00h 00m");
+  const [finalBalance, setFinalBalance] = useState("00h 00m");
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -51,12 +53,7 @@ export default function WeekFilter() {
       const endDate = weekEnd.format("YYYY-MM-DD");
       const apiUrl = `/time-records?period=week&startDate=${startDate}&endDate=${endDate}`;
 
-      console.log("📅 Buscando registros para:", startDate, "até", endDate);
-      console.log("🌐 URL da API:", apiUrl);
-
       const response = await api.get(apiUrl);
-
-      console.log("✅ Resposta da API:", response.data);
 
       if (
         !response.data ||
@@ -65,10 +62,23 @@ export default function WeekFilter() {
       ) {
         setErrorMessage("Nenhum registro encontrado para essa semana.");
       } else {
-        setRecords(response.data.results[0].records || []);
+        const allRecords = response.data.results.flatMap((r: any) => r.records);
+
+        // 🔹 Ordena os registros para garantir que Domingo (0) seja o primeiro e Sábado (6) o último
+        const sortedRecords = allRecords.sort(
+          (a: { clockIn: string | null }, b: { clockIn: string | null }) => {
+            const dayA = a.clockIn ? dayjs(a.clockIn).day() : 0;
+            const dayB = b.clockIn ? dayjs(b.clockIn).day() : 0;
+            return dayA - dayB;
+          }
+        );
+
+        setRecords(sortedRecords);
+        setTotalPositiveHours(response.data.totalPositiveHours || "00h 00m");
+        setTotalNegativeHours(response.data.totalNegativeHours || "00h 00m");
+        setFinalBalance(response.data.finalBalance || "00h 00m");
       }
     } catch (error: any) {
-      console.log("❌ Código de erro:", error.response?.status);
       if (error.response?.status === 404) {
         setErrorMessage("Nenhum registro encontrado para essa semana.");
       } else {
@@ -80,19 +90,19 @@ export default function WeekFilter() {
   };
 
   const changeWeek = (direction: "next" | "prev") => {
-    const today = dayjs().startOf("day"); // Pega a data de hoje sem horário
-    const nextWeekStart = weekStart.add(7, "day").startOf("week"); // Próximo domingo
+    const today = dayjs().startOf("day"); // Data de hoje sem horário
+    const nextWeekStart = weekStart.add(7, "day").day(0); // Próximo domingo
 
-    // Permite voltar para semanas passadas, mas bloqueia semanas futuras
+    // Bloqueia avanço para semanas futuras
     if (direction === "next" && nextWeekStart.isAfter(today)) {
-      return; // Bloqueia avanço para semanas futuras
+      return;
     }
 
     const newWeekStart = weekStart
       .add(direction === "next" ? 7 : -7, "day")
-      .startOf("week"); // Sempre domingo
+      .day(0); // Sempre domingo
     setWeekStart(newWeekStart);
-    setWeekEnd(newWeekStart.add(6, "day")); // Sempre termina no sábado
+    setWeekEnd(newWeekStart.day(6)); // Sempre sábado
   };
 
   const formatTime = (dateString: string | null) => {
@@ -102,16 +112,18 @@ export default function WeekFilter() {
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Olá, {userName ? userName : "Usuário"}</Text>
+    <View style={globalStyles.container}>
+      <Text style={globalStyles.title}>
+        Olá, {userName ? userName : "Usuário"}
+      </Text>
 
       {/* Navegação de Semana */}
-      <View style={styles.dateBox}>
+      <View style={globalStyles.containerFilter}>
         <TouchableOpacity onPress={() => changeWeek("prev")}>
           <Icon name="chevron-left" size={50} color="#fff" />
         </TouchableOpacity>
 
-        <Text style={styles.dateText}>
+        <Text style={globalStyles.textFilter}>
           {weekStart.format("DD/MM/YYYY")} - {weekEnd.format("DD/MM/YYYY")}
         </Text>
 
@@ -119,88 +131,99 @@ export default function WeekFilter() {
           onPress={() => changeWeek("next")}
           disabled={weekStart
             .add(7, "day")
-            .startOf("week")
-            .isAfter(dayjs().startOf("day"))} // Bloqueia futuras
+            .day(0)
+            .isAfter(dayjs().startOf("day"))}
         >
           <Icon
             name="chevron-right"
             size={50}
             color={
-              weekStart
-                .add(7, "day")
-                .startOf("week")
-                .isAfter(dayjs().startOf("day"))
+              weekStart.add(7, "day").day(0).isAfter(dayjs().startOf("day"))
                 ? "#888"
                 : "#fff"
             }
           />
         </TouchableOpacity>
       </View>
+      <View style={globalStyles.containerBankHours}>
+        <View style={globalStyles.boxBankHours}>
+          <Text style={globalStyles.bankHoursText}>Horas</Text>
+          <Text style={globalStyles.bankHoursValue}>+{totalPositiveHours}</Text>
+        </View>
+        <View style={globalStyles.boxBankHours}>
+          <Text style={globalStyles.bankHoursText}>Horas</Text>
+          <Text style={globalStyles.bankHoursValue}>-{totalNegativeHours}</Text>
+        </View>
+        <View style={globalStyles.boxBankHours}>
+          <Text style={globalStyles.bankHoursText}>Saldo</Text>
+          <Text style={globalStyles.bankHoursValue}>{finalBalance}</Text>
+        </View>
+      </View>
 
-      <View style={styles.border} />
+      <View style={globalStyles.border} />
 
-      <View style={styles.content}>
+      <View style={globalStyles.content}>
         {loading ? (
           <ActivityIndicator size="large" color="#fff" />
         ) : errorMessage ? (
-          <Text style={styles.errorText}>{errorMessage}</Text>
+          <Text style={globalStyles.errorText}>{errorMessage}</Text>
         ) : (
           <ScrollView
-            style={styles.scrollView}
+            style={globalStyles.scrollView}
             showsVerticalScrollIndicator={false}
           >
             {records.map((record, index) => (
-              <View key={index} style={styles.containerReport}>
-                <Text style={styles.weekDay}>
+              <View key={index} style={globalStyles.containerReport}>
+                <Text style={globalStyles.weekDay}>
                   {weekDays[dayjs(record.clockIn).day()]} -{" "}
                   {dayjs(record.clockIn).format("DD/MM/YYYY")}
                 </Text>
 
-                <View style={styles.containerTime}>
-                  <View style={styles.boxTime}>
-                    <View style={styles.timeRecord}>
+                <View style={globalStyles.containerTime}>
+                  <View style={globalStyles.boxTime}>
+                    <View style={globalStyles.pointTime}>
                       <Icon name="arrow-forward" size={30} color="#00ff15" />
-                      <Text style={styles.timeText}>
+                      <Text style={globalStyles.timeText}>
                         {formatTime(record.clockIn)}
                       </Text>
                     </View>
 
-                    <View style={styles.timeRecord}>
+                    <View style={globalStyles.pointTime}>
                       <Icon name="arrow-back" size={30} color="#ff0000" />
-                      <Text style={styles.timeText}>
+                      <Text style={globalStyles.timeText}>
                         {formatTime(record.lunchStart)}
                       </Text>
                     </View>
 
-                    <View style={styles.timeRecord}>
+                    <View style={globalStyles.pointTime}>
                       <Icon name="arrow-forward" size={30} color="#00ff15" />
-                      <Text style={styles.timeText}>
+                      <Text style={globalStyles.timeText}>
                         {formatTime(record.lunchEnd)}
                       </Text>
                     </View>
 
-                    <View style={styles.timeRecord}>
+                    <View style={globalStyles.pointTime}>
                       <Icon name="arrow-back" size={30} color="#ff0000" />
-                      <Text style={styles.timeText}>
+                      <Text style={globalStyles.timeText}>
                         {formatTime(record.clockOut)}
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.containerBankHours}>
-                    <View style={styles.bankHoursBox}>
-                      <Text style={styles.bankHoursTitle}>Horas no dia</Text>
-                      <Text style={styles.bankHoursValue}>
+                  <View style={globalStyles.containerWorked}>
+                    <View style={globalStyles.boxWorked}>
+                      <Text style={globalStyles.workedText}>Horas</Text>
+                      <Text style={globalStyles.workedValue}>
                         {record?.workedHours || "00:00"}
                       </Text>
                     </View>
-                    <View style={styles.bankHoursBox}>
-                      <Text style={styles.bankHoursTitle}>Saldo do dia</Text>
+                    <View style={globalStyles.boxWorked}>
+                      <Text style={globalStyles.workedText}>Saldo</Text>
                       <Text
                         style={[
-                          styles.bankHoursValue,
+                          globalStyles.bankHoursValue,
                           record?.balance?.includes("-")
-                            ? styles.negative
-                            : styles.positive,
+                            ? globalStyles.negative
+                            : globalStyles.positive,
                         ]}
                       >
                         {record?.balance || "00:00"}
@@ -218,106 +241,3 @@ export default function WeekFilter() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    backgroundColor: "#011D4C",
-    paddingTop: 20,
-    paddingBottom: 80,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 20,
-  },
-  dateBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  dateText: {
-    color: "#fff",
-    fontSize: 18,
-    marginHorizontal: 10,
-  },
-  border: {
-    width: "100%",
-    borderBottomColor: "#fff",
-    borderBottomWidth: 1,
-    marginBottom: 10,
-  },
-  content: {
-    flex: 1, // Faz com que o ScrollView ocupe todo o espaço disponível
-    width: "90%",
-  },
-  scrollView: {
-    flexGrow: 1,
-  },
-  containerReport: {
-    borderWidth: 1,
-    borderRadius: 5,
-    padding: 10,
-    borderColor: "#fff",
-    marginBottom: 10,
-  },
-  weekDay: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 5,
-  },
-  containerTime: {
-    flexDirection: "column",
-    justifyContent: "space-around",
-    marginTop: 10,
-  },
-  boxTime: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 10,
-  },
-  timeRecord: {
-    alignItems: "center",
-  },
-  timeText: {
-    color: "#fff",
-    fontSize: 16,
-    marginTop: 5,
-  },
-  containerBankHours: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginTop: 20,
-  },
-  bankHoursBox: {
-    alignItems: "center",
-    padding: 5,
-    borderRadius: 8,
-  },
-  bankHoursTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  bankHoursValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  errorText: {
-    color: "#fff",
-    fontSize: 18,
-    textAlign: "center",
-    marginTop: 20,
-  },
-  positive: {
-    color: "#00ff15", // Verde para saldo positivo
-  },
-  negative: {
-    color: "#ff0000", // Vermelho para saldo negativo
-  },
-});
