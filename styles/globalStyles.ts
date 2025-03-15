@@ -120,6 +120,9 @@ const globalStyles = StyleSheet.create({
   negative: {
     color: "#ff0000", // Vermelho para saldo negativo
   },
+  view: {
+    gap: 20,
+  },
 });
 
 export default globalStyles;

@@ -43,6 +43,26 @@ export default function WeekFilter() {
     fetchRecords();
   }, [weekStart]);
 
+  const changeWeek = (direction: "next" | "prev") => {
+    if (loading) return;
+    setLoading(true);
+
+    const today = dayjs().startOf("day"); // Data de hoje sem horário
+    const nextWeekStart = weekStart.add(7, "day").day(0); // Próximo domingo
+
+    // Bloqueia avanço para semanas futuras
+    if (direction === "next" && nextWeekStart.isAfter(today)) {
+      setLoading(false);
+      return;
+    }
+
+    const newWeekStart = weekStart
+      .add(direction === "next" ? 7 : -7, "day")
+      .day(0); // Sempre domingo
+    setWeekStart(newWeekStart);
+    setWeekEnd(newWeekStart.day(6)); // Sempre sábado
+  };
+
   const fetchRecords = async () => {
     setLoading(true);
     setErrorMessage("");
@@ -89,22 +109,6 @@ export default function WeekFilter() {
     setLoading(false);
   };
 
-  const changeWeek = (direction: "next" | "prev") => {
-    const today = dayjs().startOf("day"); // Data de hoje sem horário
-    const nextWeekStart = weekStart.add(7, "day").day(0); // Próximo domingo
-
-    // Bloqueia avanço para semanas futuras
-    if (direction === "next" && nextWeekStart.isAfter(today)) {
-      return;
-    }
-
-    const newWeekStart = weekStart
-      .add(direction === "next" ? 7 : -7, "day")
-      .day(0); // Sempre domingo
-    setWeekStart(newWeekStart);
-    setWeekEnd(newWeekStart.day(6)); // Sempre sábado
-  };
-
   const formatTime = (dateString: string | null) => {
     return dateString ? dayjs(dateString).format("HH:mm") : "--:--";
   };
@@ -119,8 +123,12 @@ export default function WeekFilter() {
 
       {/* Navegação de Semana */}
       <View style={globalStyles.containerFilter}>
-        <TouchableOpacity onPress={() => changeWeek("prev")}>
-          <Icon name="chevron-left" size={50} color="#fff" />
+        <TouchableOpacity onPress={() => changeWeek("prev")} disabled={loading}>
+          <Icon
+            name="chevron-left"
+            size={50}
+            color={loading ? "#888" : "#fff"}
+          />
         </TouchableOpacity>
 
         <Text style={globalStyles.textFilter}>
@@ -138,6 +146,7 @@ export default function WeekFilter() {
             name="chevron-right"
             size={50}
             color={
+              loading ||
               weekStart.add(7, "day").day(0).isAfter(dayjs().startOf("day"))
                 ? "#888"
                 : "#fff"

@@ -80,7 +80,7 @@ const MenuComponent = () => {
               onPress={() => router.push("/weekFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
-              <Text style={styles.modalText}>Semanal</Text>
+              <Text style={styles.modalText}>Semana</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -93,7 +93,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => router.push("/monthFilter")}
+              onPress={() => router.push("/yearFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Ano</Text>

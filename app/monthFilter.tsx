@@ -45,20 +45,19 @@ export default function MonthFilter() {
 
   const changeMonth = (direction: "next" | "prev") => {
     if (loading) return; // Bloqueia mudança enquanto estiver carregando
+    setLoading(true);
 
     const today = dayjs().startOf("day");
     const nextMonthStart = monthStart.add(1, "month").startOf("month");
 
-    if (direction === "next" && nextMonthStart.isAfter(today)) {
+    // Bloqueia avanço para anos futuros
+    if (direction === "next" && nextMonthStart.isAfter(today, "month")) {
+      setLoading(false);
       return;
     }
-
-    setLoading(true); // 🔹 Agora o estado de `loading` é atualizado antes de mudar o mês
-
     const newMonth = monthStart
       .add(direction === "next" ? 1 : -1, "month")
       .startOf("month");
-
     setMonthStart(newMonth);
   };
 
@@ -186,7 +185,12 @@ export default function MonthFilter() {
           <Icon
             name="chevron-right"
             size={50}
-            color={loading ? "#888" : "#fff"} // 🔹 Ícone cinza quando desativado
+            color={
+              loading ||
+              monthStart.add(1, "month").isAfter(dayjs().startOf("day"))
+                ? "#888"
+                : "#fff"
+            }
           />
         </TouchableOpacity>
       </View>
