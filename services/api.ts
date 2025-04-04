@@ -2,8 +2,8 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const api = axios.create({
-  baseURL: "https://martir-ponto-digital-backend.onrender.com", // Substitua pelo endereço correto
-  timeout: 5000,
+  baseURL: "http://localhost:3000/", // Substitua pelo endereço correto
+  timeout: 2000,
 });
 
 // Intercepta as requisições para adicionar o token

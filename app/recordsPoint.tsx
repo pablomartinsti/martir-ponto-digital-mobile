@@ -87,14 +87,16 @@ export default function RecordPoint() {
   };
 
   const fetchWorkStatus = async () => {
+    console.log("🧪 fetchWorkStatus foi chamada!");
     try {
       const token = await AsyncStorage.getItem("token");
-
+      console.log("🎫 Token:", token);
       if (!token) {
         Alert.alert("Erro", "Usuário não autenticado.");
         return;
       }
       const today = new Date().toISOString().split("T")[0];
+      console.log("📆 Data de hoje:", today);
 
       const response = await api.get(
         `/time-records?period=day&startDate=${today}&endDate=${today}`,
@@ -102,15 +104,11 @@ export default function RecordPoint() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-
+      console.log("📡 Response status:", response.status);
       if (response.status === 200) {
         const data = response.data.results[0].records[0];
-
+        console.log("📄 Data retornada:", data);
         if (!data) {
-          console.log(
-            "⚠ Nenhum registro encontrado para hoje. Resetando estado..."
-          );
-
           Alert.alert(
             "Iniciar Jornada",
             "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
@@ -129,9 +127,6 @@ export default function RecordPoint() {
         }
         // 🔹 Se a jornada já foi finalizada, garantir que o botão volte para "Iniciar Jornada"
         if (data.clockOut) {
-          console.log(
-            "🚀 Jornada já finalizada. Resetando estado para 'Iniciar Jornada'..."
-          );
           setStatus({
             clockIn: false,
             lunchStart: false,
@@ -180,6 +175,7 @@ export default function RecordPoint() {
           }
 
           setElapsedTime(elapsedSeconds);
+          console.log("⏱️ Tempo calculado:", elapsedSeconds);
         } else {
           setElapsedTime(0);
           setTimerPaused(true);
@@ -291,26 +287,31 @@ export default function RecordPoint() {
         return;
       }
 
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Erro", "Permissão de localização negada.");
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
       const response = await api.post(
         "/lunch-start",
-        { recordId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { recordId, latitude, longitude },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.status === 201 || response.status === 200) {
+      if (response.status === 200 || response.status === 201) {
         setTimerPaused(true);
-        setStatus((prev) => ({ ...prev, lunchStart: true })); // Atualiza o estado
+        setStatus((prev) => ({ ...prev, lunchStart: true }));
         Alert.alert("Sucesso", "Saída para almoço registrada!");
       } else {
         Alert.alert("Erro", "Não foi possível registrar a saída para almoço.");
       }
     } catch (error) {
       console.error("Erro ao registrar saída para almoço:", error);
-      Alert.alert("Erro", "Não foi possível registrar a saída para almoço.");
+      Alert.alert("Erro", "Erro ao registrar saída para almoço.");
     }
   };
 
@@ -327,26 +328,31 @@ export default function RecordPoint() {
         return;
       }
 
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Erro", "Permissão de localização negada.");
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
       const response = await api.post(
         "/lunch-end",
-        { recordId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { recordId, latitude, longitude },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.status === 201 || response.status === 200) {
+      if (response.status === 200 || response.status === 201) {
         setTimerPaused(false);
-        setStatus((prev) => ({ ...prev, lunchEnd: true })); // Atualiza o estado
+        setStatus((prev) => ({ ...prev, lunchEnd: true }));
         Alert.alert("Sucesso", "Retorno do almoço registrado!");
       } else {
         Alert.alert("Erro", "Não foi possível registrar o retorno do almoço.");
       }
     } catch (error) {
       console.error("Erro ao registrar retorno do almoço:", error);
-      Alert.alert("Erro", "Não foi possível registrar o retorno do almoço.");
+      Alert.alert("Erro", "Erro ao registrar retorno do almoço.");
     }
   };
 
@@ -363,28 +369,31 @@ export default function RecordPoint() {
         return;
       }
 
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Erro", "Permissão de localização negada.");
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
       const response = await api.post(
         "/clock-out",
-        { recordId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { recordId, latitude, longitude },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.status === 201 || response.status === 200) {
-        await AsyncStorage.removeItem("startTime"); // 🔹 Remove a hora de início
-        await AsyncStorage.removeItem("recordId");
-
-        setElapsedTime(0); // Reseta o cronômetro
-        setTimerPaused(true); // Pausa o cronômetro
+      if (response.status === 200 || response.status === 201) {
+        await AsyncStorage.multiRemove(["startTime", "recordId"]);
+        setElapsedTime(0);
+        setTimerPaused(true);
         setStatus({
           clockIn: false,
           lunchStart: false,
           lunchEnd: false,
           clockOut: false,
-        }); // Reseta o status
+        });
 
         Alert.alert("Sucesso", "Jornada finalizada!");
       } else {
@@ -392,7 +401,7 @@ export default function RecordPoint() {
       }
     } catch (error) {
       console.error("Erro ao finalizar jornada:", error);
-      Alert.alert("Erro", "Não foi possível finalizar a jornada.");
+      Alert.alert("Erro", "Erro ao finalizar a jornada.");
     }
   };
 

@@ -3,7 +3,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   StatusBar,
@@ -29,11 +28,13 @@ const loginSchema = z.object({
   cpf: z
     .string()
     .nonempty("O CPF é obrigatório.")
-    .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, "Formato de CPF inválido."),
+    .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, "Formato de CPF inválido.")
+    .transform((val) => val.trim()),
   password: z
     .string()
     .nonempty("A senha é obrigatória.")
-    .min(6, "A senha deve ter no mínimo 6 caracteres."),
+    .min(6, "A senha deve ter no mínimo 6 caracteres.")
+    .transform((val) => val.trim()),
 });
 
 const loginToAPI = async (cpf: string, password: string) => {
@@ -43,10 +44,15 @@ const loginToAPI = async (cpf: string, password: string) => {
     if (response.data.token && response.data.user) {
       const { token, user } = response.data;
 
+      if (user.role !== "employee") {
+        throw new Error("Este app é exclusivo para funcionários.");
+      }
+
       // Salvar os dados no AsyncStorage
-      await AsyncStorage.setItem("token", token);
-      await AsyncStorage.setItem("employeeName", user.name); // Salva o nome
-      await AsyncStorage.setItem("employeeId", user.id); // Salva o ID do usuário
+      await AsyncStorage.setItem(
+        "userData",
+        JSON.stringify({ token, name: user.name, id: user.id })
+      );
 
       return response.data;
     } else {
@@ -54,7 +60,28 @@ const loginToAPI = async (cpf: string, password: string) => {
     }
   } catch (error: any) {
     console.error("Erro ao fazer login:", error);
-    throw new Error(error.response?.data?.message || "Erro ao fazer login.");
+
+    if (error.response) {
+      const status = error.response.status;
+      const errorMsg = error.response.data?.error || "Erro ao fazer login.";
+
+      switch (status) {
+        case 401:
+          throw new Error("Senha inválida. Tente novamente.");
+        case 403:
+          throw new Error(
+            "Funcionário desativado. Entre em contato com o administrador."
+          );
+        case 404:
+          throw new Error("Funcionário não encontrado. Verifique seu CPF.");
+        default:
+          throw new Error(errorMsg);
+      }
+    }
+
+    throw new Error(
+      "Erro ao conectar com o servidor. Tente novamente mais tarde."
+    );
   }
 };
 
@@ -80,10 +107,6 @@ const LoginScreen = () => {
         // Limpa dados do funcionário anterior
         await AsyncStorage.removeItem("recordId");
         await AsyncStorage.removeItem("startTimestamp");
-
-        // Salva o token e o employeeId do novo funcionário
-        await AsyncStorage.setItem("token", response.token);
-        await AsyncStorage.setItem("employeeId", response.user.id);
 
         // Redireciona para a tela inicial
         router.push("/welcome");
@@ -169,7 +192,19 @@ const LoginScreen = () => {
           </View>
         )}
       />
-      <Button title="Entrar" onPress={handleSubmit(onSubmit)} />
+      <View style={styles.view}>
+        <Button
+          title={isLoading ? "Conectando..." : "Entrar"}
+          onPress={handleSubmit(onSubmit)}
+          disabled={isLoading}
+          loading={isLoading}
+        />
+        {isLoading && (
+          <Text style={styles.loadingText}>
+            Aguardando o servidor iniciar... Isso pode levar alguns segundos.
+          </Text>
+        )}
+      </View>
     </View>
   );
 };
@@ -183,13 +218,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#011D4C",
   },
   logo: {
-    width: 550,
-    height: 550,
+    width: 450,
+    height: 450,
     marginTop: -150,
     marginBottom: -30,
   },
   view: {
-    width: "100%",
+    width: "90%",
   },
   input: {
     width: "100%",
@@ -210,6 +245,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: "left",
     alignSelf: "flex-start",
+  },
+  loadingText: {
+    color: "#fff",
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: "center",
   },
 });
 
