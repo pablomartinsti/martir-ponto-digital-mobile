@@ -1,40 +1,34 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
-import MenuComponent from "@/components/Menu";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import api from "@/services/api";
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 import globalStyles from "@/styles/globalStyles";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import MenuComponent from "@/components/Menu";
+import api from "@/services/api";
+import { useAuth } from "@/contexts/authContext";
+import {
+  formatDateToISO,
+  formatTimeOrPlaceholder,
+} from "@/utils/dateTimeUtils";
+import { getWeekdayAndDate } from "@/utils/workUtils";
 
 export default function DayFilter() {
-  const [userName, setUserName] = useState<string | null>(null);
-  const [date, setDate] = useState(
-    () => new Date(dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"))
-  );
+  const { user, token } = useAuth();
+
+  const userName = user?.name
+    ? user.name.split(" ")[0].charAt(0).toUpperCase() +
+      user.name.split(" ")[0].slice(1)
+    : "Usuário";
+
+  const [date, setDate] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Zera hora, minuto, segundo, milissegundo
+    return today;
+  });
+
   const [record, setRecord] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const storedName = await AsyncStorage.getItem("employeeName");
-        if (storedName) {
-          setUserName(storedName);
-        }
-      } catch (error) {
-        console.error("❌ Erro ao recuperar usuário:", error);
-      }
-    };
-
-    loadUserData();
-  }, []);
 
   useEffect(() => {
     fetchRecords();
@@ -46,8 +40,9 @@ export default function DayFilter() {
     setRecord(null);
 
     try {
-      const formattedDate = formatDate(date);
-      const today = dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"); // 🔹 Garante a data correta no fuso BR
+      const formattedDate = formatDateToISO(date);
+
+      const today = dayjs().format("YYYY-MM-DD");
 
       if (formattedDate > today) {
         setErrorMessage("Não é possível visualizar registros futuros.");
@@ -56,36 +51,34 @@ export default function DayFilter() {
       }
 
       const apiUrl = `/time-records?period=day&startDate=${formattedDate}&endDate=${formattedDate}`;
+      const response = await api.get(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`, // <-- se for necessário
+        },
+      });
 
-      const response = await api.get(apiUrl);
+      const data = response.data;
 
-      if (
-        !response.data ||
-        !response.data.results ||
-        response.data.results.length === 0
-      ) {
-        setErrorMessage("Nenhum registro encontrado.");
+      const record =
+        data?.results?.[0]?.records?.length > 0
+          ? data.results[0].records[0]
+          : null;
+
+      if (record) {
+        setRecord(record);
       } else {
-        setRecord(response.data.results[0].records[0] || null); // 🔹 Pega o primeiro registro válido do dia
+        setErrorMessage("Nenhum registro encontrado.");
       }
     } catch (error: any) {
       if (error.response?.status === 404) {
         setErrorMessage("Nenhum registro encontrado.");
       } else {
+        console.error("Erro ao buscar registros:", error);
         setErrorMessage("Erro ao carregar registros.");
       }
     }
 
     setLoading(false);
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toISOString().split("T")[0];
-  };
-
-  const formatTime = (dateString: string | null) => {
-    if (!dateString) return "--:--"; // Se não houver horário, mostra "--:--"
-    return dayjs(dateString).format("HH:mm");
   };
 
   const changeDate = (days: number) => {
@@ -94,40 +87,36 @@ export default function DayFilter() {
       newDate.setDate(newDate.getDate() + days);
 
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // 🔹 Remove a hora para comparar apenas a data
+      today.setHours(0, 0, 0, 0);
 
       if (newDate > today) {
-        return prevDate; // 🔹 Impede seleção de datas futuras
+        return prevDate;
       }
 
       return newDate;
     });
   };
 
-  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
   return (
     <View style={globalStyles.container}>
-      <Text style={globalStyles.title}>
-        Olá, {userName ? userName : "Usuário"}
-      </Text>
+      <Text style={globalStyles.title}>Olá, {userName}</Text>
 
       {/* Navegação de Data */}
       <View style={globalStyles.containerFilter}>
         <TouchableOpacity onPress={() => changeDate(-1)}>
           <Icon name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
-        <Text style={globalStyles.textFilter}>{formatDate(date)}</Text>
+        <Text style={globalStyles.textFilter}>{formatDateToISO(date)}</Text>
         <TouchableOpacity
           onPress={() => changeDate(1)}
-          disabled={dayjs(date).add(1, "day").isAfter(dayjs().startOf("day"))} // 🔹 Bloqueia futuras
+          disabled={dayjs(date).add(1, "day").isAfter(dayjs().startOf("day"))}
         >
           <Icon
             name="chevron-right"
             size={30}
             color={
               dayjs(date).add(1, "day").isAfter(dayjs().startOf("day"))
-                ? "#777" // 🔹 Cor mais clara para indicar desabilitado
+                ? "#777"
                 : "#fff"
             }
           />
@@ -144,9 +133,7 @@ export default function DayFilter() {
           <View style={globalStyles.containerReport}>
             <Text style={globalStyles.weekDay}>
               {record?.clockIn
-                ? `${weekDays[dayjs(record.clockIn).day()]} - ${dayjs(
-                    record.clockIn
-                  ).format("DD/MM/YYYY")}`
+                ? getWeekdayAndDate(record.clockIn)
                 : "Data não disponível"}
             </Text>
 
@@ -156,7 +143,7 @@ export default function DayFilter() {
                 <View style={globalStyles.pointTime}>
                   <Icon name="arrow-forward" size={30} color="#00ff15" />
                   <Text style={globalStyles.timeText}>
-                    {formatTime(record?.clockIn)}
+                    {formatTimeOrPlaceholder(record?.clockIn)}
                   </Text>
                 </View>
 
@@ -164,7 +151,7 @@ export default function DayFilter() {
                 <View style={globalStyles.pointTime}>
                   <Icon name="arrow-back" size={30} color="#ff0000" />
                   <Text style={globalStyles.timeText}>
-                    {formatTime(record?.lunchStart)}
+                    {formatTimeOrPlaceholder(record?.lunchStart)}
                   </Text>
                 </View>
 
@@ -172,7 +159,7 @@ export default function DayFilter() {
                 <View style={globalStyles.pointTime}>
                   <Icon name="arrow-forward" size={30} color="#00ff15" />
                   <Text style={globalStyles.timeText}>
-                    {formatTime(record?.lunchEnd)}
+                    {formatTimeOrPlaceholder(record?.lunchEnd)}
                   </Text>
                 </View>
 
@@ -180,10 +167,11 @@ export default function DayFilter() {
                 <View style={globalStyles.pointTime}>
                   <Icon name="arrow-back" size={30} color="#ff0000" />
                   <Text style={globalStyles.timeText}>
-                    {formatTime(record?.clockOut)}
+                    {formatTimeOrPlaceholder(record?.clockOut)}
                   </Text>
                 </View>
               </View>
+
               {/* Informações de Horas Trabalhadas */}
               <View style={globalStyles.containerWorked}>
                 <View style={globalStyles.boxWorked}>

@@ -12,26 +12,14 @@ import {
 import Icon from "react-native-vector-icons/MaterialIcons";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br"; // Importa o idioma português
+import { useAuth } from "@/contexts/authContext";
 
 dayjs.locale("pt-br"); // Define o idioma globalmente
 
 const MenuComponent = () => {
   const [modalVisible, setModalVisible] = useState(false);
 
-  const logout = async () => {
-    try {
-      await AsyncStorage.clear(); // Limpa os dados do armazenamento assíncrono
-
-      // 🔹 Dispara um evento global para resetar o estado no RecordPoint
-      setTimeout(() => {
-        router.push("/login");
-        router.replace("/login"); // Garante que o usuário volte para login
-      }, 500); // Pequeno delay para garantir que a limpeza do AsyncStorage ocorra antes do redirecionamento
-    } catch (error) {
-      console.error("Erro ao sair:", error);
-      Alert.alert("Erro", "Não foi possível sair.");
-    }
-  };
+  const { logout } = useAuth();
 
   return (
     <View style={styles.menuContainer}>
@@ -89,14 +77,6 @@ const MenuComponent = () => {
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Mês</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={() => router.push("/yearFilter")}
-            >
-              <Icon name="today" size={30} color="#fff" />
-              <Text style={styles.modalText}>Ano</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

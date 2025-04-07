@@ -1,12 +1,20 @@
+// AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 
+type UserData = {
+  id: string;
+  name: string;
+  role: string;
+};
+
 type AuthContextData = {
   isAuthenticated: boolean;
   token: string | null;
+  user: UserData | null;
   loading: boolean;
-  login: (token: string, user: any) => void;
+  login: (token: string, user: UserData) => void;
   logout: () => void;
 };
 
@@ -17,25 +25,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Verificar autenticação ao iniciar o app
+  // Verifica autenticação ao iniciar o app
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const storedToken = await AsyncStorage.getItem("token");
+        const storedUserData = await AsyncStorage.getItem("userData");
 
-        if (storedToken) {
-          setToken(storedToken);
+        console.log("✅ Dados parseados:", storedUserData);
+
+        if (storedUserData) {
+          const parsed = JSON.parse(storedUserData);
+
+          setToken(parsed.token); // pega o token separado
+          setUser({
+            id: parsed.id,
+            name: parsed.name,
+            role: parsed.role,
+          }); // apenas os dados do usuário
           setIsAuthenticated(true);
-        } else {
-          setToken(null);
-          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
         setToken(null);
+        setUser(null);
         setIsAuthenticated(false);
       } finally {
         setLoading(false);
@@ -46,43 +62,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   // Função para login
-  const login = async (token: string, user: any) => {
+  const login = async (token: string, user: UserData) => {
     setToken(token);
+    setUser(user);
     setIsAuthenticated(true);
-    await AsyncStorage.setItem("token", token);
-    await AsyncStorage.setItem("userData", JSON.stringify(user));
+    await AsyncStorage.setItem("userData", JSON.stringify({ token, ...user }));
   };
 
   // Função para logout
   const logout = async () => {
-    setToken(null); // Limpa o token
-    setIsAuthenticated(false); // Atualiza o estado de autenticação
-    await AsyncStorage.clear(); // Limpa todos os dados do AsyncStorage
-    router.push("/login"); // Redireciona para a tela de login
+    setToken(null);
+    setUser(null);
+    setIsAuthenticated(false);
+    await AsyncStorage.clear();
+    router.push("/login");
   };
 
   // Redirecionamento condicional
   useEffect(() => {
     if (!loading) {
-      // Só faz o redirecionamento quando o loading for `false`
       if (!isAuthenticated) {
-        router.push("/login"); // Se não estiver autenticado, vai para a tela de login
+        router.push("/login");
       } else {
-        router.push("/welcome"); // Se autenticado, vai para a tela de boas-vindas
+        router.push("/welcome");
       }
     }
-  }, [loading, isAuthenticated, router]); // Dependências de redirecionamento
+  }, [loading, isAuthenticated, router]);
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, token, loading, login, logout }}
+      value={{ isAuthenticated, token, user, loading, login, logout }}
     >
-      {children} {/* Renderiza os filhos do AuthProvider */}
+      {children}
     </AuthContext.Provider>
   );
 };
 
-// Hook para acessar o contexto
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAuth } from "@/contexts/authContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
@@ -51,7 +52,7 @@ const loginToAPI = async (cpf: string, password: string) => {
       // Salvar os dados no AsyncStorage
       await AsyncStorage.setItem(
         "userData",
-        JSON.stringify({ token, name: user.name, id: user.id })
+        JSON.stringify({ token, ...user })
       );
 
       return response.data;
@@ -96,6 +97,9 @@ const LoginScreen = () => {
     resolver: zodResolver(loginSchema),
   });
 
+  // Dentro do componente LoginScreen:
+  const { login } = useAuth(); // usa o login do contexto
+
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     const cleanCpf = data.cpf.replace(/\D/g, ""); // Remove a máscara do CPF
     setIsLoading(true);
@@ -103,12 +107,15 @@ const LoginScreen = () => {
     try {
       const response = await loginToAPI(cleanCpf, data.password);
 
-      if (response.token) {
+      if (response.token && response.user) {
         // Limpa dados do funcionário anterior
         await AsyncStorage.removeItem("recordId");
         await AsyncStorage.removeItem("startTimestamp");
 
-        // Redireciona para a tela inicial
+        // Atualiza o contexto de autenticação
+        login(response.token, response.user);
+
+        // Redireciona (o contexto já redireciona também, mas isso garante fluidez)
         router.push("/welcome");
       } else {
         Alert.alert("Erro", "Credenciais inválidas.");

@@ -6,38 +6,32 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import MenuComponent from "@/components/Menu";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import api from "@/services/api";
 import dayjs from "dayjs";
+import MenuComponent from "@/components/Menu";
 import globalStyles from "@/styles/globalStyles";
+import { useAuth } from "@/contexts/authContext";
+import { getWeekdayAndDate, formatDateUTCMinus3 } from "../utils/workUtils";
+import { fetchTimeRecords } from "@/utils/recordUtils";
 
 export default function WeekFilter() {
-  const [userName, setUserName] = useState<string | null>(null);
-  const [weekStart, setWeekStart] = useState(dayjs().day(0)); // Domingo
-  const [weekEnd, setWeekEnd] = useState(dayjs().day(6)); // Sábado
-  const [totalPositiveHours, setTotalPositiveHours] = useState("00h 00m");
-  const [totalNegativeHours, setTotalNegativeHours] = useState("00h 00m");
-  const [finalBalance, setFinalBalance] = useState("00h 00m");
+  const { user, token } = useAuth();
+
+  const userName = user?.name
+    ? user.name.split(" ")[0].charAt(0).toUpperCase() +
+      user.name.split(" ")[0].slice(1)
+    : "Usuário";
+
+  const [weekStart, setWeekStart] = useState(() =>
+    dayjs().startOf("week").set("hour", 0).set("minute", 0).set("second", 0)
+  );
+  const [weekEnd, setWeekEnd] = useState(() =>
+    dayjs().startOf("week").add(6, "day").endOf("day")
+  );
+
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const storedName = await AsyncStorage.getItem("employeeName");
-        if (storedName) {
-          setUserName(storedName);
-        }
-      } catch (error) {
-        console.error("❌ Erro ao recuperar usuário:", error);
-      }
-    };
-
-    loadUserData();
-  }, []);
 
   useEffect(() => {
     fetchRecords();
@@ -47,20 +41,22 @@ export default function WeekFilter() {
     if (loading) return;
     setLoading(true);
 
-    const today = dayjs().startOf("day"); // Data de hoje sem horário
-    const nextWeekStart = weekStart.add(7, "day").day(0); // Próximo domingo
+    const today = dayjs().startOf("day");
 
-    // Bloqueia avanço para semanas futuras
-    if (direction === "next" && nextWeekStart.isAfter(today)) {
+    const newWeekStart = weekStart
+      .add(direction === "next" ? 7 : -7, "day")
+      .day(0);
+
+    const newWeekEnd = newWeekStart.day(6);
+
+    // ❌ Se nova semana termina depois de hoje, e é totalmente futura, bloqueia
+    if (direction === "next" && newWeekStart.isAfter(today)) {
       setLoading(false);
       return;
     }
 
-    const newWeekStart = weekStart
-      .add(direction === "next" ? 7 : -7, "day")
-      .day(0); // Sempre domingo
     setWeekStart(newWeekStart);
-    setWeekEnd(newWeekStart.day(6)); // Sempre sábado
+    setWeekEnd(newWeekEnd);
   };
 
   const fetchRecords = async () => {
@@ -69,41 +65,29 @@ export default function WeekFilter() {
     setRecords([]);
 
     try {
-      const startDate = weekStart.format("YYYY-MM-DD");
-      const endDate = weekEnd.format("YYYY-MM-DD");
-      const apiUrl = `/time-records?period=week&startDate=${startDate}&endDate=${endDate}`;
+      const startDate = formatDateUTCMinus3(weekStart.toDate());
+      const endDate = formatDateUTCMinus3(weekEnd.toDate());
 
-      const response = await api.get(apiUrl);
+      const { records } = await fetchTimeRecords(
+        token!,
+        "week",
+        startDate,
+        endDate
+      );
 
-      if (
-        !response.data ||
-        !response.data.results ||
-        response.data.results.length === 0
-      ) {
+      if (records.length === 0) {
         setErrorMessage("Nenhum registro encontrado para essa semana.");
       } else {
-        const allRecords = response.data.results.flatMap((r: any) => r.records);
-
-        // 🔹 Ordena os registros para garantir que Domingo (0) seja o primeiro e Sábado (6) o último
-        const sortedRecords = allRecords.sort(
-          (a: { clockIn: string | null }, b: { clockIn: string | null }) => {
-            const dayA = a.clockIn ? dayjs(a.clockIn).day() : 0;
-            const dayB = b.clockIn ? dayjs(b.clockIn).day() : 0;
-            return dayA - dayB;
-          }
-        );
+        const sortedRecords = records.sort((a, b) => {
+          const dayA = a.clockIn ? dayjs(a.clockIn).day() : 0;
+          const dayB = b.clockIn ? dayjs(b.clockIn).day() : 0;
+          return dayA - dayB;
+        });
 
         setRecords(sortedRecords);
-        setTotalPositiveHours(response.data.totalPositiveHours || "00h 00m");
-        setTotalNegativeHours(response.data.totalNegativeHours || "00h 00m");
-        setFinalBalance(response.data.finalBalance || "00h 00m");
       }
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        setErrorMessage("Nenhum registro encontrado para essa semana.");
-      } else {
-        setErrorMessage("Erro ao carregar registros.");
-      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Erro ao carregar registros.");
     }
 
     setLoading(false);
@@ -113,15 +97,10 @@ export default function WeekFilter() {
     return dateString ? dayjs(dateString).format("HH:mm") : "--:--";
   };
 
-  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
   return (
     <View style={globalStyles.container}>
-      <Text style={globalStyles.title}>
-        Olá, {userName ? userName : "Usuário"}
-      </Text>
+      <Text style={globalStyles.title}>Olá, {userName}</Text>
 
-      {/* Navegação de Semana */}
       <View style={globalStyles.containerFilter}>
         <TouchableOpacity onPress={() => changeWeek("prev")} disabled={loading}>
           <Icon
@@ -154,20 +133,6 @@ export default function WeekFilter() {
           />
         </TouchableOpacity>
       </View>
-      <View style={globalStyles.containerBankHours}>
-        <View style={globalStyles.boxBankHours}>
-          <Text style={globalStyles.bankHoursText}>Horas</Text>
-          <Text style={globalStyles.bankHoursValue}>+{totalPositiveHours}</Text>
-        </View>
-        <View style={globalStyles.boxBankHours}>
-          <Text style={globalStyles.bankHoursText}>Horas</Text>
-          <Text style={globalStyles.bankHoursValue}>-{totalNegativeHours}</Text>
-        </View>
-        <View style={globalStyles.boxBankHours}>
-          <Text style={globalStyles.bankHoursText}>Saldo</Text>
-          <Text style={globalStyles.bankHoursValue}>{finalBalance}</Text>
-        </View>
-      </View>
 
       <View style={globalStyles.border} />
 
@@ -184,8 +149,9 @@ export default function WeekFilter() {
             {records.map((record, index) => (
               <View key={index} style={globalStyles.containerReport}>
                 <Text style={globalStyles.weekDay}>
-                  {weekDays[dayjs(record.clockIn).day()]} -{" "}
-                  {dayjs(record.clockIn).format("DD/MM/YYYY")}
+                  {record?.clockIn
+                    ? getWeekdayAndDate(record.clockIn)
+                    : "Dia não registrado"}
                 </Text>
 
                 <View style={globalStyles.containerTime}>
@@ -218,6 +184,7 @@ export default function WeekFilter() {
                       </Text>
                     </View>
                   </View>
+
                   <View style={globalStyles.containerWorked}>
                     <View style={globalStyles.boxWorked}>
                       <Text style={globalStyles.workedText}>Horas</Text>
