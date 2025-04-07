@@ -38,6 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log("✅ Dados parseados:", storedUserData);
 
         if (storedUserData) {
+          console.log("🔎 Dados brutos do AsyncStorage:", storedUserData);
+
           const parsed = JSON.parse(storedUserData);
 
           setToken(parsed.token); // pega o token separado

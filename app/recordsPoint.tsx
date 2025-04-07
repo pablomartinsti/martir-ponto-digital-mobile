@@ -8,16 +8,6 @@ import Button from "@/components/Button";
 import MenuComponent from "@/components/Menu";
 import globalStyles from "@/styles/globalStyles";
 import { useAuth } from "@/contexts/authContext";
-import {
-  formatDateUTCMinus3,
-  resetWorkState,
-  calculateElapsedTime,
-} from "@/utils/workUtils";
-import {
-  getFormattedCurrentDate,
-  getFormattedCurrentTime,
-  formatSecondsToTime,
-} from "../utils/dateTimeUtils"; // ajuste o caminho conforme seu projeto
 
 export default function RecordPoint() {
   const { user, token } = useAuth();
@@ -36,86 +26,46 @@ export default function RecordPoint() {
     clockOut: false,
   });
 
-  const fetchWorkStatus = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-
-    const today = formatDateUTCMinus3(new Date());
-
-    try {
-      const response = await api.get(
-        `/time-records?period=day&startDate=${today}&endDate=${today}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      const data = response.data.results[0]?.records[0];
-
-      if (!data || data.clockOut) {
-        await resetWorkState(setStatus, setElapsedTime, setTimerPaused);
-        return;
-      }
-
-      setStatus({
-        clockIn: !!data.clockIn,
-        lunchStart: !!data.lunchStart,
-        lunchEnd: !!data.lunchEnd,
-        clockOut: !!data.clockOut,
-      });
-
-      await AsyncStorage.setItem("recordId", data._id);
-
-      const { time, paused } = calculateElapsedTime(
-        data.clockIn,
-        data.lunchStart,
-        data.lunchEnd
-      );
-
-      setElapsedTime(time);
-      setTimerPaused(paused);
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        // ✅ Caso não exista registro para o dia, permite iniciar a jornada
-        await resetWorkState(setStatus, setElapsedTime, setTimerPaused);
-        return;
-      }
-
-      if (error.response?.status === 401) {
-        Alert.alert("Sessão expirada", "Faça login novamente.");
-        return;
-      }
-
-      console.error("Erro ao buscar status da jornada:", error);
-      Alert.alert("Erro", "Não foi possível recuperar o status da jornada.");
-    }
-  }, [token]);
-
   useFocusEffect(
     useCallback(() => {
-      fetchWorkStatus();
-    }, [fetchWorkStatus])
+      if (token) {
+        fetchWorkStatus();
+      }
+    }, [token])
   );
 
+  // Atualiza data e hora em tempo real
   useEffect(() => {
     const updateDateTime = () => {
-      setCurrentDate(getFormattedCurrentDate());
-      setCurrentTime(getFormattedCurrentTime());
+      const now = new Date();
+      const optionsDate = {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      } as const;
+      const formattedDate = now.toLocaleDateString("pt-BR", optionsDate);
+      const formattedTime = now.toLocaleTimeString("pt-BR");
+
+      setCurrentDate(formattedDate);
+      setCurrentTime(formattedTime);
     };
 
     updateDateTime();
     const interval = setInterval(updateDateTime, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | null = null;
+    let timer: ReturnType<typeof setInterval> | null = null; // Permite ambos os tipos
+
     if (!timerPaused) {
       timer = setInterval(() => {
         setElapsedTime((prevTime) => prevTime + 1);
       }, 1000);
     }
+
     return () => {
       if (timer !== null) {
         clearInterval(timer);
@@ -123,9 +73,96 @@ export default function RecordPoint() {
     };
   }, [timerPaused]);
 
+  const getAuthData = async () => {
+    const storedUserData = await AsyncStorage.getItem("userData");
+    const parsed = storedUserData ? JSON.parse(storedUserData) : null;
+
+    const token = parsed ? parsed.token : null;
+    const recordId = await AsyncStorage.getItem("recordId");
+    const employeeId = parsed ? parsed.id : null; // Pegando o employeeId do objeto `userData`
+
+    return { token, recordId, employeeId };
+  };
+
+  const fetchWorkStatus = async () => {
+    try {
+      const { token } = await getAuthData();
+      if (!token) {
+        Alert.alert("Erro", "Usuário não autenticado.");
+        return;
+      }
+
+      const today = new Date();
+      const todayBrasilia = new Date(today.getTime() - 3 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
+
+      console.log("📆 Data ajustada para Brasil:", todayBrasilia);
+
+      const response = await api.get(
+        `/time-records?period=day&startDate=${todayBrasilia}&endDate=${todayBrasilia}`
+      );
+
+      console.log("📡 Response status:", response.status);
+
+      if (response.status === 200) {
+        const data = response.data.results[0];
+
+        if (!data || !data.records || data.records.length === 0) {
+          console.warn("⚠ Nenhum registro encontrado.");
+          Alert.alert(
+            "Iniciar Jornada",
+            "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
+          );
+          return;
+        }
+
+        const record = data.records[0];
+        if (record._id) {
+          await AsyncStorage.setItem("recordId", record._id);
+        }
+
+        setStatus({
+          clockIn: !!record.clockIn,
+          lunchStart: !!record.lunchStart,
+          lunchEnd: !!record.lunchEnd,
+          clockOut: !!record.clockOut,
+        });
+
+        const currentTime = new Date().getTime();
+
+        if (record.clockIn) {
+          let startTime = new Date(record.clockIn).getTime();
+          let elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+          setElapsedTime(elapsedSeconds);
+          setTimerPaused(false);
+        } else {
+          setElapsedTime(0);
+          setTimerPaused(true);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Erro ao buscar status da jornada:", error);
+      Alert.alert("Erro", "Não foi possível recuperar o status da jornada.");
+    }
+  };
+
+  // Formata o tempo decorrido
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    return `${hrs.toString().padStart(2, "0")}:${mins
+      .toString()
+      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const startWorkDay = async () => {
     try {
-      if (!token || !user?.id) {
+      const { token, employeeId } = await getAuthData();
+
+      if (!token || !employeeId) {
         Alert.alert("Erro", "Usuário não autenticado.");
         return;
       }
@@ -141,28 +178,36 @@ export default function RecordPoint() {
 
       const response = await api.post(
         "/clock-in",
-        { employeeId: user.id, latitude, longitude },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { employeeId, latitude, longitude },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      if (response.status === 200 || response.status === 201) {
-        await AsyncStorage.setItem("recordId", response.data._id);
+      if (response.status === 201 || response.status === 200) {
+        const { _id: recordId } = response.data;
+        const startTime = new Date().getTime(); // 🔹 Captura a hora de início
+        await AsyncStorage.setItem("startTime", startTime.toString()); // 🔹 Salva no AsyncStorage
+
+        await AsyncStorage.setItem("recordId", recordId);
         setTimerPaused(false);
-        setStatus((prev) => ({ ...prev, clockIn: true }));
+        setStatus((prev) => ({ ...prev, clockIn: true })); // Atualiza o estado
         Alert.alert("Sucesso", "Jornada de trabalho iniciada!");
-        await fetchWorkStatus();
       } else {
         Alert.alert("Erro", "Não foi possível iniciar a jornada.");
       }
     } catch (error) {
       console.error("Erro ao iniciar jornada:", error);
-      Alert.alert("Erro", "Você já concluiu sua jornada hoje!");
+      Alert.alert("Alerta", "Você já concluir sua jornada hoje!");
     }
   };
 
   const startLunch = async () => {
     try {
-      const recordId = await AsyncStorage.getItem("recordId");
+      const { token, recordId } = await getAuthData();
+
       if (!token || !recordId) {
         Alert.alert(
           "Erro",
@@ -190,7 +235,6 @@ export default function RecordPoint() {
         setTimerPaused(true);
         setStatus((prev) => ({ ...prev, lunchStart: true }));
         Alert.alert("Sucesso", "Saída para almoço registrada!");
-        await fetchWorkStatus();
       } else {
         Alert.alert("Erro", "Não foi possível registrar a saída para almoço.");
       }
@@ -202,7 +246,8 @@ export default function RecordPoint() {
 
   const returnFromLunch = async () => {
     try {
-      const recordId = await AsyncStorage.getItem("recordId");
+      const { token, recordId } = await getAuthData();
+
       if (!token || !recordId) {
         Alert.alert(
           "Erro",
@@ -230,7 +275,6 @@ export default function RecordPoint() {
         setTimerPaused(false);
         setStatus((prev) => ({ ...prev, lunchEnd: true }));
         Alert.alert("Sucesso", "Retorno do almoço registrado!");
-        await fetchWorkStatus();
       } else {
         Alert.alert("Erro", "Não foi possível registrar o retorno do almoço.");
       }
@@ -242,7 +286,8 @@ export default function RecordPoint() {
 
   const finishWorkDay = async () => {
     try {
-      const recordId = await AsyncStorage.getItem("recordId");
+      const { token, recordId } = await getAuthData();
+
       if (!token || !recordId) {
         Alert.alert(
           "Erro",
@@ -276,8 +321,8 @@ export default function RecordPoint() {
           lunchEnd: false,
           clockOut: false,
         });
+
         Alert.alert("Sucesso", "Jornada finalizada!");
-        await fetchWorkStatus();
       } else {
         Alert.alert("Erro", "Não foi possível finalizar a jornada.");
       }
@@ -298,21 +343,25 @@ export default function RecordPoint() {
       <View style={globalStyles.border} />
 
       <View style={styles.boxClock}>
-        <Text style={styles.clockText}>{formatSecondsToTime(elapsedTime)}</Text>
+        <Text style={styles.clockText}>{formatTime(elapsedTime)}</Text>
       </View>
-
       <View style={styles.boxButton}>
         {!status.clockIn ? (
+          // Botão para iniciar a jornada
+
           <Button title="Iniciar Jornada" onPress={startWorkDay} />
         ) : !status.lunchStart ? (
+          // Botão para saída para almoço
           <Button title="Saída Almoço" onPress={startLunch} />
         ) : !status.lunchEnd ? (
+          // Botão para retorno do almoço
+
           <Button title="Retorno Almoço" onPress={returnFromLunch} />
         ) : (
+          // Botão para finalizar jornada
           <Button title="Finalizar Jornada" onPress={finishWorkDay} />
         )}
       </View>
-
       <MenuComponent />
     </View>
   );
@@ -342,6 +391,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: "center",
   },
+
   boxClock: {
     width: 300,
     height: 300,
