@@ -100,50 +100,63 @@ export default function RecordPoint() {
       console.log("📆 Data ajustada para Brasil:", todayBrasilia);
 
       const response = await api.get(
-        `/time-records?period=day&startDate=${todayBrasilia}&endDate=${todayBrasilia}`
+        `/time-records?period=day&startDate=${todayBrasilia}&endDate=${todayBrasilia}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
 
-      console.log("📡 Response status:", response.status);
+      const result = response.data.results[0];
 
-      if (response.status === 200) {
-        const data = response.data.results[0];
-
-        if (!data || !data.records || data.records.length === 0) {
-          console.warn("⚠ Nenhum registro encontrado.");
-          Alert.alert(
-            "Iniciar Jornada",
-            "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
-          );
-          return;
-        }
-
-        const record = data.records[0];
-        if (record._id) {
-          await AsyncStorage.setItem("recordId", record._id);
-        }
-
-        setStatus({
-          clockIn: !!record.clockIn,
-          lunchStart: !!record.lunchStart,
-          lunchEnd: !!record.lunchEnd,
-          clockOut: !!record.clockOut,
-        });
-
-        const currentTime = new Date().getTime();
-
-        if (record.clockIn) {
-          let startTime = new Date(record.clockIn).getTime();
-          let elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
-          setElapsedTime(elapsedSeconds);
-          setTimerPaused(false);
-        } else {
-          setElapsedTime(0);
-          setTimerPaused(true);
-        }
+      if (!result || !result.records || result.records.length === 0) {
+        console.warn("⚠ Nenhum registro retornado pela API.");
+        return;
       }
-    } catch (error) {
+
+      await updateStatusAndTimer(result.records[0]);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.warn("⚠ Nenhum registro encontrado (404).");
+        Alert.alert(
+          "Iniciar Jornada",
+          "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
+        );
+        setElapsedTime(0);
+        setTimerPaused(true);
+        setStatus({
+          clockIn: false,
+          lunchStart: false,
+          lunchEnd: false,
+          clockOut: false,
+        });
+        return;
+      }
+
       console.error("❌ Erro ao buscar status da jornada:", error);
       Alert.alert("Erro", "Não foi possível recuperar o status da jornada.");
+    }
+  };
+  const updateStatusAndTimer = async (record: any) => {
+    if (record._id) {
+      await AsyncStorage.setItem("recordId", record._id);
+    }
+
+    setStatus({
+      clockIn: !!record.clockIn,
+      lunchStart: !!record.lunchStart,
+      lunchEnd: !!record.lunchEnd,
+      clockOut: !!record.clockOut,
+    });
+
+    if (record.clockIn) {
+      const startTime = new Date(record.clockIn).getTime();
+      const currentTime = Date.now();
+      const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+      setElapsedTime(elapsedSeconds);
+      setTimerPaused(false);
+    } else {
+      setElapsedTime(0);
+      setTimerPaused(true);
     }
   };
 
