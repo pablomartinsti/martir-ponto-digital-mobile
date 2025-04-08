@@ -1,29 +1,25 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import {
-  View,
-  TouchableOpacity,
-  Modal,
-  Text,
-  Alert,
-  StyleSheet,
-} from "react-native";
+import { View, TouchableOpacity, Modal, Text, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import dayjs from "dayjs";
-import "dayjs/locale/pt-br"; // Importa o idioma português
+import "dayjs/locale/pt-br";
 import { useAuth } from "@/contexts/authContext";
 
-dayjs.locale("pt-br"); // Define o idioma globalmente
+dayjs.locale("pt-br");
 
 const MenuComponent = () => {
   const [modalVisible, setModalVisible] = useState(false);
 
-  React.useEffect(() => {
-    setModalVisible(false);
-  }, []);
-
   const { logout } = useAuth();
+
+  const handleNavigation = (path: any) => {
+    setModalVisible(false);
+    setTimeout(() => {
+      router.push(path);
+    }, 300);
+  };
 
   return (
     <View style={styles.menuContainer}>
@@ -49,11 +45,11 @@ const MenuComponent = () => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Relatorio de Horas</Text>
+            <Text style={styles.modalTitle}>Relatório de Horas</Text>
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => router.push("/recordsPoint")}
+              onPress={() => handleNavigation("/recordsPoint")}
             >
               <Icon name="work" size={30} color="#fff" />
               <Text style={styles.modalText}>Iniciar jornada</Text>
@@ -61,7 +57,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => router.push("/dayFilter")}
+              onPress={() => handleNavigation("/dayFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Dia</Text>
@@ -69,7 +65,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => router.push("/weekFilter")}
+              onPress={() => handleNavigation("/weekFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Semana</Text>
@@ -77,7 +73,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => router.push("/monthFilter")}
+              onPress={() => handleNavigation("/monthFilter")}
             >
               <Icon name="today" size={30} color="#fff" />
               <Text style={styles.modalText}>Mês</Text>
@@ -115,12 +111,11 @@ const styles = StyleSheet.create({
   view: {
     width: "85%",
   },
-
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // Fundo escuro transparente
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
     width: "80%",
