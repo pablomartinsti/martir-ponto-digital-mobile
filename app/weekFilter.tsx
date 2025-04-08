@@ -7,14 +7,18 @@ import {
   ScrollView,
 } from "react-native";
 import MenuComponent from "@/components/Menu";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import api from "@/services/api";
 import dayjs from "dayjs";
 import globalStyles from "@/styles/globalStyles";
+import { useAuth } from "@/contexts/authContext";
 
 export default function WeekFilter() {
-  const [userName, setUserName] = useState<string | null>(null);
+  const { user } = useAuth();
+  const userName = user?.name
+    ? user.name.split(" ")[0].charAt(0).toUpperCase() +
+      user.name.split(" ")[0].slice(1)
+    : "Usuário";
   const [weekStart, setWeekStart] = useState(dayjs().day(0)); // Domingo
   const [weekEnd, setWeekEnd] = useState(dayjs().day(6)); // Sábado
   const [totalPositiveHours, setTotalPositiveHours] = useState("00h 00m");
@@ -23,21 +27,6 @@ export default function WeekFilter() {
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const storedName = await AsyncStorage.getItem("employeeName");
-        if (storedName) {
-          setUserName(storedName);
-        }
-      } catch (error) {
-        console.error("❌ Erro ao recuperar usuário:", error);
-      }
-    };
-
-    loadUserData();
-  }, []);
 
   useEffect(() => {
     fetchRecords();

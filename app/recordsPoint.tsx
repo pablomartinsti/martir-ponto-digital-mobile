@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "expo-router";
 import { View, Text, StyleSheet, Alert } from "react-native";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -83,6 +83,39 @@ export default function RecordPoint() {
 
     return { token, recordId, employeeId };
   };
+  const updateStatusAndTimer = async (record: any) => {
+    if (record._id) {
+      await AsyncStorage.setItem("recordId", record._id);
+    }
+
+    const clockIn = !!record.clockIn;
+    const lunchStart = !!record.lunchStart;
+    const lunchEnd = !!record.lunchEnd;
+    const clockOut = !!record.clockOut;
+
+    setStatus({
+      clockIn,
+      lunchStart,
+      lunchEnd,
+      clockOut,
+    });
+
+    if (clockOut) {
+      // 🟢 Se a jornada foi finalizada, zera tudo
+      setElapsedTime(0);
+      setTimerPaused(true);
+      await AsyncStorage.removeItem("recordId");
+    } else if (clockIn) {
+      const startTime = new Date(record.clockIn).getTime();
+      const currentTime = Date.now();
+      const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+      setElapsedTime(elapsedSeconds);
+      setTimerPaused(false);
+    } else {
+      setElapsedTime(0);
+      setTimerPaused(true);
+    }
+  };
 
   const fetchWorkStatus = async () => {
     try {
@@ -136,29 +169,6 @@ export default function RecordPoint() {
       Alert.alert("Erro", "Não foi possível recuperar o status da jornada.");
     }
   };
-  const updateStatusAndTimer = async (record: any) => {
-    if (record._id) {
-      await AsyncStorage.setItem("recordId", record._id);
-    }
-
-    setStatus({
-      clockIn: !!record.clockIn,
-      lunchStart: !!record.lunchStart,
-      lunchEnd: !!record.lunchEnd,
-      clockOut: !!record.clockOut,
-    });
-
-    if (record.clockIn) {
-      const startTime = new Date(record.clockIn).getTime();
-      const currentTime = Date.now();
-      const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
-      setElapsedTime(elapsedSeconds);
-      setTimerPaused(false);
-    } else {
-      setElapsedTime(0);
-      setTimerPaused(true);
-    }
-  };
 
   // Formata o tempo decorrido
   const formatTime = (seconds: number) => {
@@ -180,24 +190,14 @@ export default function RecordPoint() {
         return;
       }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Erro", "Permissão de localização negada.");
-        return;
-      }
+      const latitude = -18.9127814;
+      const longitude = -48.1886814;
 
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
-
-      const response = await api.post(
-        "/clock-in",
-        { employeeId, latitude, longitude },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await api.post("/clock-in", {
+        employeeId,
+        latitude,
+        longitude,
+      });
 
       if (response.status === 201 || response.status === 200) {
         const { _id: recordId } = response.data;
@@ -229,20 +229,14 @@ export default function RecordPoint() {
         return;
       }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Erro", "Permissão de localização negada.");
-        return;
-      }
+      const latitude = -18.9127814;
+      const longitude = -48.1886814;
 
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
-
-      const response = await api.post(
-        "/lunch-start",
-        { recordId, latitude, longitude },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.post("/lunch-start", {
+        recordId,
+        latitude,
+        longitude,
+      });
 
       if (response.status === 200 || response.status === 201) {
         setTimerPaused(true);
@@ -269,20 +263,14 @@ export default function RecordPoint() {
         return;
       }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Erro", "Permissão de localização negada.");
-        return;
-      }
+      const latitude = -18.9127814;
+      const longitude = -48.1886814;
 
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
-
-      const response = await api.post(
-        "/lunch-end",
-        { recordId, latitude, longitude },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.post("/lunch-end", {
+        recordId,
+        latitude,
+        longitude,
+      });
 
       if (response.status === 200 || response.status === 201) {
         setTimerPaused(false);
@@ -298,6 +286,7 @@ export default function RecordPoint() {
   };
 
   const finishWorkDay = async () => {
+    console.log("🔁 fetchWorkStatus rodou");
     try {
       const { token, recordId } = await getAuthData();
 
@@ -309,20 +298,14 @@ export default function RecordPoint() {
         return;
       }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Erro", "Permissão de localização negada.");
-        return;
-      }
+      const latitude = -18.9127814;
+      const longitude = -48.1886814;
 
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
-
-      const response = await api.post(
-        "/clock-out",
-        { recordId, latitude, longitude },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.post("/clock-out", {
+        recordId,
+        latitude,
+        longitude,
+      });
 
       if (response.status === 200 || response.status === 201) {
         await AsyncStorage.multiRemove(["startTime", "recordId"]);
@@ -359,22 +342,19 @@ export default function RecordPoint() {
         <Text style={styles.clockText}>{formatTime(elapsedTime)}</Text>
       </View>
       <View style={styles.boxButton}>
-        {!status.clockIn ? (
-          // Botão para iniciar a jornada
-
+        {status.clockOut ? (
+          <Button title="Iniciar Jornada" onPress={startWorkDay} />
+        ) : !status.clockIn ? (
           <Button title="Iniciar Jornada" onPress={startWorkDay} />
         ) : !status.lunchStart ? (
-          // Botão para saída para almoço
           <Button title="Saída Almoço" onPress={startLunch} />
         ) : !status.lunchEnd ? (
-          // Botão para retorno do almoço
-
           <Button title="Retorno Almoço" onPress={returnFromLunch} />
         ) : (
-          // Botão para finalizar jornada
           <Button title="Finalizar Jornada" onPress={finishWorkDay} />
         )}
       </View>
+
       <MenuComponent />
     </View>
   );

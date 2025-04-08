@@ -1,40 +1,29 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
 import MenuComponent from "@/components/Menu";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import api from "@/services/api";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import globalStyles from "@/styles/globalStyles";
+import { useAuth } from "@/contexts/authContext";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 export default function DayFilter() {
-  const [userName, setUserName] = useState<string | null>(null);
+  const { user } = useAuth();
+  const userName = user?.name
+    ? user.name.split(" ")[0].charAt(0).toUpperCase() +
+      user.name.split(" ")[0].slice(1)
+    : "Usuário";
   const [date, setDate] = useState(
     () => new Date(dayjs().tz("America/Sao_Paulo").format("YYYY-MM-DD"))
   );
   const [record, setRecord] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const storedName = await AsyncStorage.getItem("employeeName");
-        if (storedName) {
-          setUserName(storedName);
-        }
-      } catch (error) {
-        console.error("❌ Erro ao recuperar usuário:", error);
-      }
-    };
-
-    loadUserData();
-  }, []);
 
   useEffect(() => {
     fetchRecords();
@@ -55,9 +44,9 @@ export default function DayFilter() {
         return;
       }
 
-      const apiUrl = `/time-records?period=day&startDate=${formattedDate}&endDate=${formattedDate}`;
-
-      const response = await api.get(apiUrl);
+      const response = await api.get(
+        `/time-records?period=day&startDate=${formattedDate}&endDate=${formattedDate}`
+      );
 
       if (
         !response.data ||
@@ -84,8 +73,7 @@ export default function DayFilter() {
   };
 
   const formatTime = (dateString: string | null) => {
-    if (!dateString) return "--:--"; // Se não houver horário, mostra "--:--"
-    return dayjs(dateString).format("HH:mm");
+    return dateString ? dayjs(dateString).format("HH:mm") : "--:--";
   };
 
   const changeDate = (days: number) => {

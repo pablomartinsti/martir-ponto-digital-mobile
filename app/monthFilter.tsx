@@ -7,17 +7,21 @@ import {
   ScrollView,
 } from "react-native";
 import MenuComponent from "@/components/Menu";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import api from "@/services/api";
 import globalStyles from "@/styles/globalStyles";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br"; // Importa o idioma português
+import { useAuth } from "@/contexts/authContext";
 
 dayjs.locale("pt-br"); // Define o idioma globalmente
 
 export default function MonthFilter() {
-  const [userName, setUserName] = useState<string | null>(null);
+  const { user } = useAuth();
+  const userName = user?.name
+    ? user.name.split(" ")[0].charAt(0).toUpperCase() +
+      user.name.split(" ")[0].slice(1)
+    : "Usuário";
   const [monthStart, setMonthStart] = useState(dayjs().startOf("month")); // Primeiro dia do mês
   const [totalPositiveHours, setTotalPositiveHours] = useState("00h 00m");
   const [totalNegativeHours, setTotalNegativeHours] = useState("00h 00m");
@@ -27,21 +31,6 @@ export default function MonthFilter() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const monthEnd = monthStart.endOf("month"); // Último dia do mês
-
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const storedName = await AsyncStorage.getItem("employeeName");
-        if (storedName) {
-          setUserName(storedName);
-        }
-      } catch (error) {
-        console.error("❌ Erro ao recuperar usuário:", error);
-      }
-    };
-
-    loadUserData();
-  }, []);
 
   const changeMonth = (direction: "next" | "prev") => {
     if (loading) return; // Bloqueia mudança enquanto estiver carregando
@@ -74,9 +63,10 @@ export default function MonthFilter() {
     try {
       const startDate = monthStart.format("YYYY-MM-DD");
       const endDate = monthEnd.format("YYYY-MM-DD");
-      const apiUrl = `/time-records?period=month&startDate=${startDate}&endDate=${endDate}`;
 
-      const response = await api.get(apiUrl);
+      const response = await api.get(
+        `/time-records?period=month&startDate=${startDate}&endDate=${endDate}`
+      );
 
       if (!response.data || !response.data.results.length) {
         setErrorMessage("Nenhum registro encontrado para esse mês.");
@@ -144,7 +134,9 @@ export default function MonthFilter() {
   };
 
   const formatTime = (dateString: string | null) => {
-    return dateString ? dayjs(dateString).format("HH:mm") : "--:--";
+    return dateString
+      ? dayjs(dateString).tz("America/Sao_Paulo").format("HH:mm")
+      : "--:--";
   };
 
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
