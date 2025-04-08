@@ -19,6 +19,10 @@ dayjs.locale("pt-br"); // Define o idioma globalmente
 const MenuComponent = () => {
   const [modalVisible, setModalVisible] = useState(false);
 
+  React.useEffect(() => {
+    setModalVisible(false);
+  }, []);
+
   const { logout } = useAuth();
 
   return (
