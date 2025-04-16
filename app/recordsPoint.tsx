@@ -251,26 +251,24 @@ export default function RecordPoint() {
     } catch (error: any) {
       console.error("Erro ao iniciar jornada:", error);
 
-      if (
-        error.response?.status === 403 &&
-        error.response?.data?.error ===
-          "Não é permitido bater ponto antes do início da jornada."
-      ) {
-        Alert.alert(
-          "Atenção",
-          "Você só pode iniciar a jornada após o horário definido na sua escala."
-        );
-      } else if (
-        error.response?.status === 400 &&
-        error.response?.data?.error === "Jornada já iniciada hoje."
-      ) {
-        Alert.alert("Aviso", "Você já iniciou sua jornada hoje.");
-      } else {
-        Alert.alert(
-          "Erro",
-          "Não foi possível iniciar a jornada. Tente novamente."
-        );
+      const status = error?.response?.status;
+      const mensagem = error?.response?.data?.error;
+      console.log("🧾 Mensagem recebida:", mensagem);
+
+      if (status === 403 && typeof mensagem === "string") {
+        Alert.alert("Atenção", mensagem);
+        return;
       }
+
+      if (status === 400 && mensagem === "Jornada já iniciada hoje.") {
+        Alert.alert("Aviso", "Você já iniciou sua jornada hoje.");
+        return;
+      }
+
+      Alert.alert(
+        "Erro",
+        "Não foi possível iniciar a jornada. Tente novamente."
+      );
     }
   };
 
@@ -358,9 +356,19 @@ export default function RecordPoint() {
         Alert.alert("Sessão expirada", "Por favor, faça login novamente.");
         return;
       }
+      if (
+        error.response?.status === 403 &&
+        typeof error.response?.data?.error === "string" &&
+        error.response.data.error.includes(
+          "Tempo mínimo de intervalo para almoço"
+        )
+      ) {
+        Alert.alert("Atenção", error.response.data.error);
+        return;
+      }
 
-      console.error("❌ Erro ao buscar status da jornada:", error);
-      Alert.alert("Erro", "Não foi possível recuperar o status da jornada.");
+      console.error("❌ Erro ao registrar retorno do almoço:", error);
+      Alert.alert("Erro", "Não foi possível registrar o retorno do almoço.");
     }
   };
 
