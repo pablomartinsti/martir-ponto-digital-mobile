@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { isTokenExpired } from "@/utils/auth";
+import { Alert } from "react-native";
 
 type UserData = {
   id: string;
@@ -27,6 +29,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [logoutReason, setLogoutReason] = useState<string | null>(null);
+
   const router = useRouter();
 
   // Verifica autenticação ao iniciar o app
@@ -35,20 +39,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const storedUserData = await AsyncStorage.getItem("userData");
 
-        console.log("✅ Dados parseados:", storedUserData);
-
         if (storedUserData) {
-          console.log("🔎 Dados brutos do AsyncStorage:", storedUserData);
-
           const parsed = JSON.parse(storedUserData);
 
-          setToken(parsed.token); // pega o token separado
-          setUser({
-            id: parsed.id,
-            name: parsed.name,
-            role: parsed.role,
-          }); // apenas os dados do usuário
-          setIsAuthenticated(true);
+          if (isTokenExpired(parsed.token)) {
+            console.log("🚫 Token expirado. Deslogando...");
+            await AsyncStorage.removeItem("userData");
+            setToken(null);
+            setUser(null);
+            setIsAuthenticated(false);
+          } else {
+            setToken(parsed.token);
+            setUser({
+              id: parsed.id,
+              name: parsed.name,
+              role: parsed.role,
+            });
+            setIsAuthenticated(true);
+          }
         }
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
@@ -61,6 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     checkAuth();
+    console.log("✅ Token e usuário carregados:", token, user);
   }, []);
 
   // Função para login
@@ -90,6 +99,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     }
   }, [loading, isAuthenticated, router]);
+
+  useEffect(() => {
+    const checkLogoutReason = async () => {
+      const reason = await AsyncStorage.getItem("logoutReason");
+      if (reason === "expired") {
+        Alert.alert("Sessão expirada", "Por favor, faça login novamente.");
+        await AsyncStorage.removeItem("logoutReason");
+      }
+    };
+
+    if (!isAuthenticated && !loading) {
+      checkLogoutReason();
+    }
+  }, [isAuthenticated, loading]);
 
   return (
     <AuthContext.Provider

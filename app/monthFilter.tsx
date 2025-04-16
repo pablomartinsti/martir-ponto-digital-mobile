@@ -58,7 +58,7 @@ export default function MonthFilter() {
   const fetchRecords = async () => {
     setLoading(true);
     setErrorMessage("");
-    setRecords([]); // 🔹 Limpa os registros antes de buscar novos
+    setRecords([]);
 
     try {
       const startDate = monthStart.format("YYYY-MM-DD");
@@ -68,55 +68,24 @@ export default function MonthFilter() {
         `/time-records?period=month&startDate=${startDate}&endDate=${endDate}`
       );
 
-      if (!response.data || !response.data.results.length) {
+      const allRecords = response.data.records;
+
+      if (!response.data || !allRecords || allRecords.length === 0) {
         setErrorMessage("Nenhum registro encontrado para esse mês.");
         setLoading(false);
         return;
       }
 
-      // 🔹 Definição do tipo de registro
-      type RecordType = {
-        _id: string;
-        clockIn: string;
-        lunchStart?: string;
-        lunchEnd?: string;
-        clockOut?: string;
-        location?: { latitude: number; longitude: number };
-        workedHours: string;
-        balance: string;
-      };
-
-      type ResultType = {
-        _id: { month: number; year: number };
-        records: RecordType[];
-      };
-
-      // 🔹 Obtém todos os registros de todos os grupos com tipagem correta
-      const allRecords: RecordType[] = response.data.results.flatMap(
-        (result: ResultType) => result.records
-      );
-
-      if (!allRecords.length) {
-        setErrorMessage("Nenhum registro encontrado para esse mês.");
-        setLoading(false);
-        return;
-      }
-
-      // 🔹 Filtra apenas registros do mês selecionado
-      const filteredRecords = allRecords.filter((record: RecordType) => {
+      const filteredRecords = allRecords.filter((record: any) => {
         const recordDate = dayjs(record.clockIn);
-        return recordDate.isSame(monthStart, "month"); // Agora considera apenas o mês certo
+        return recordDate.isSame(monthStart, "month");
       });
 
-      // 🔹 Ordena os registros por data de entrada (clockIn)
-      const sortedRecords = filteredRecords.sort(
-        (a: RecordType, b: RecordType) =>
-          dayjs(a.clockIn).isBefore(dayjs(b.clockIn)) ? -1 : 1
+      const sortedRecords = filteredRecords.sort((a: any, b: any) =>
+        dayjs(a.clockIn).isBefore(dayjs(b.clockIn)) ? -1 : 1
       );
 
       setRecords(sortedRecords);
-
-      // 🔹 Atualiza os valores de horas mensais
       setTotalPositiveHours(response.data.totalPositiveHours || "00h 00m");
       setTotalNegativeHours(response.data.totalNegativeHours || "00h 00m");
       setFinalBalance(response.data.finalBalance || "00h 00m");

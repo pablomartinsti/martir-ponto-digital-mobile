@@ -48,14 +48,12 @@ export default function DayFilter() {
         `/time-records?period=day&startDate=${formattedDate}&endDate=${formattedDate}`
       );
 
-      if (
-        !response.data ||
-        !response.data.results ||
-        response.data.results.length === 0
-      ) {
+      const records = response.data.records;
+
+      if (!records || records.length === 0) {
         setErrorMessage("Nenhum registro encontrado.");
       } else {
-        setRecord(response.data.results[0].records[0] || null); // 🔹 Pega o primeiro registro válido do dia
+        setRecord(records[0] || null); // agora pega corretamente o registro do dia
       }
     } catch (error: any) {
       if (error.response?.status === 404) {

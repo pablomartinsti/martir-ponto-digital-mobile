@@ -60,20 +60,16 @@ export default function WeekFilter() {
     try {
       const startDate = weekStart.format("YYYY-MM-DD");
       const endDate = weekEnd.format("YYYY-MM-DD");
-      const apiUrl = `/time-records?period=week&startDate=${startDate}&endDate=${endDate}`;
+      const response = await api.get(
+        `/time-records?period=week&startDate=${startDate}&endDate=${endDate}`
+      );
 
-      const response = await api.get(apiUrl);
+      const allRecords = response.data.records;
 
-      if (
-        !response.data ||
-        !response.data.results ||
-        response.data.results.length === 0
-      ) {
+      if (!response.data || !allRecords || allRecords.length === 0) {
         setErrorMessage("Nenhum registro encontrado para essa semana.");
       } else {
-        const allRecords = response.data.results.flatMap((r: any) => r.records);
-
-        // 🔹 Ordena os registros para garantir que Domingo (0) seja o primeiro e Sábado (6) o último
+        // 🔹 Ordena os registros por dia da semana (Domingo a Sábado)
         const sortedRecords = allRecords.sort(
           (a: { clockIn: string | null }, b: { clockIn: string | null }) => {
             const dayA = a.clockIn ? dayjs(a.clockIn).day() : 0;

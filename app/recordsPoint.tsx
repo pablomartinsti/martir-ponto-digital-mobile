@@ -10,7 +10,7 @@ import globalStyles from "@/styles/globalStyles";
 import { useAuth } from "@/contexts/authContext";
 
 export default function RecordPoint() {
-  const { user, token } = useAuth();
+  const { user, token, loading } = useAuth();
   const userName = user?.name
     ? user.name.split(" ")[0].charAt(0).toUpperCase() +
       user.name.split(" ")[0].slice(1)
@@ -28,10 +28,10 @@ export default function RecordPoint() {
 
   useFocusEffect(
     useCallback(() => {
-      if (token) {
+      if (!loading && token && user) {
         fetchWorkStatus();
       }
-    }, [token])
+    }, [loading, token, user])
   );
 
   // Atualiza data e hora em tempo real
@@ -85,7 +85,10 @@ export default function RecordPoint() {
   };
   const updateStatusAndTimer = async (record: any) => {
     if (record._id) {
+      console.log("✅ Salvando recordId:", record._id);
       await AsyncStorage.setItem("recordId", record._id);
+    } else {
+      console.warn("❌ record._id não encontrado no registro:", record);
     }
 
     const clockIn = !!record.clockIn;
@@ -101,23 +104,46 @@ export default function RecordPoint() {
     });
 
     if (clockOut) {
-      // 🟢 Se a jornada foi finalizada, zera tudo
+      // Jornada finalizada
       setElapsedTime(0);
       setTimerPaused(true);
       await AsyncStorage.removeItem("recordId");
-    } else if (clockIn) {
+    } else if (clockIn && lunchStart && !lunchEnd) {
+      // Está no almoço: pausa o cronômetro, mantém tempo anterior
+      const startTime = new Date(record.clockIn).getTime();
+      const lunchStartTime = new Date(record.lunchStart).getTime();
+      const elapsedSeconds = Math.floor((lunchStartTime - startTime) / 1000);
+      setElapsedTime(elapsedSeconds);
+      setTimerPaused(true);
+    } else if (clockIn && !lunchStart) {
+      // Jornada iniciada, ainda não saiu pro almoço
       const startTime = new Date(record.clockIn).getTime();
       const currentTime = Date.now();
       const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
       setElapsedTime(elapsedSeconds);
       setTimerPaused(false);
+    } else if (clockIn && lunchStart && lunchEnd) {
+      // Voltou do almoço, continua contando desde o retorno
+      const startTime = new Date(record.clockIn).getTime();
+      const breakTime =
+        new Date(record.lunchEnd).getTime() -
+        new Date(record.lunchStart).getTime();
+      const currentTime = Date.now();
+      const workedTime = Math.floor(
+        (currentTime - startTime - breakTime) / 1000
+      );
+      setElapsedTime(workedTime);
+      setTimerPaused(false);
     } else {
+      // Jornada ainda não iniciada
       setElapsedTime(0);
       setTimerPaused(true);
     }
   };
 
   const fetchWorkStatus = async () => {
+    console.log("📡 Chamando fetchWorkStatus()");
+
     try {
       const { token } = await getAuthData();
       if (!token) {
@@ -139,17 +165,28 @@ export default function RecordPoint() {
         }
       );
 
-      const result = response.data.results[0];
+      const records = response.data.records;
 
-      if (!result || !result.records || result.records.length === 0) {
+      if (!records || records.length === 0) {
         console.warn("⚠ Nenhum registro retornado pela API.");
         return;
       }
 
-      await updateStatusAndTimer(result.records[0]);
+      await updateStatusAndTimer(records[0]);
     } catch (error: any) {
+      const currentToken = await AsyncStorage.getItem("userData");
+
+      if (!currentToken) {
+        console.log("🚫 Sessão já foi limpa pelo interceptor. Nada a fazer.");
+        return;
+      }
+
+      if (error.response?.status === 401) {
+        Alert.alert("Sessão expirada", "Faça login novamente.");
+        return;
+      }
+
       if (error.response?.status === 404) {
-        console.warn("⚠ Nenhum registro encontrado (404).");
         Alert.alert(
           "Iniciar Jornada",
           "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
@@ -211,9 +248,29 @@ export default function RecordPoint() {
       } else {
         Alert.alert("Erro", "Não foi possível iniciar a jornada.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao iniciar jornada:", error);
-      Alert.alert("Alerta", "Você já concluir sua jornada hoje!");
+
+      if (
+        error.response?.status === 403 &&
+        error.response?.data?.error ===
+          "Não é permitido bater ponto antes do início da jornada."
+      ) {
+        Alert.alert(
+          "Atenção",
+          "Você só pode iniciar a jornada após o horário definido na sua escala."
+        );
+      } else if (
+        error.response?.status === 400 &&
+        error.response?.data?.error === "Jornada já iniciada hoje."
+      ) {
+        Alert.alert("Aviso", "Você já iniciou sua jornada hoje.");
+      } else {
+        Alert.alert(
+          "Erro",
+          "Não foi possível iniciar a jornada. Tente novamente."
+        );
+      }
     }
   };
 
@@ -279,9 +336,31 @@ export default function RecordPoint() {
       } else {
         Alert.alert("Erro", "Não foi possível registrar o retorno do almoço.");
       }
-    } catch (error) {
-      console.error("Erro ao registrar retorno do almoço:", error);
-      Alert.alert("Erro", "Erro ao registrar retorno do almoço.");
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.warn("⚠ Nenhum registro encontrado (404).");
+        Alert.alert(
+          "Iniciar Jornada",
+          "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
+        );
+        setElapsedTime(0);
+        setTimerPaused(true);
+        setStatus({
+          clockIn: false,
+          lunchStart: false,
+          lunchEnd: false,
+          clockOut: false,
+        });
+        return;
+      }
+
+      if (error.response?.status === 401) {
+        Alert.alert("Sessão expirada", "Por favor, faça login novamente.");
+        return;
+      }
+
+      console.error("❌ Erro ao buscar status da jornada:", error);
+      Alert.alert("Erro", "Não foi possível recuperar o status da jornada.");
     }
   };
 
