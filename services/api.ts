@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
 const api = axios.create({
-  baseURL: "http://192.168.100.94:3000",
+  baseURL: "https://api-v2.martircontabil.com.br",
   timeout: 2000,
 });
 // ✅ Interceptor de resposta para capturar token expirado
