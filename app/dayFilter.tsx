@@ -52,8 +52,17 @@ export default function DayFilter() {
           <ActivityIndicator size="large" color="#fff" />
         ) : errorMessage ? (
           <Text style={globalStyles.errorText}>{errorMessage}</Text>
-        ) : data && data.records[0]?.status !== "Folga" ? (
-          <PointRecord record={data.records[0]} />
+        ) : data && data.records && data.records.length > 0 ? (
+          data.records[0].clockIn ||
+          data.records[0].lunchStart ||
+          data.records[0].lunchEnd ||
+          data.records[0].clockOut ? (
+            <PointRecord record={data.records[0]} />
+          ) : (
+            <Text style={globalStyles.errorText}>
+              Nenhum registro encontrado.
+            </Text>
+          )
         ) : (
           <Text style={globalStyles.errorText}>
             Nenhum registro encontrado.

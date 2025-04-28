@@ -30,9 +30,15 @@ export default function MonthFilter() {
     canGoNext,
   } = useTimeRecords("month");
 
-  const onlyWorkedRecords = (data?.records || []).filter(
-    (record: any) => record.status !== "Folga"
-  );
+  const onlyWorkedRecords = (data?.records || []).filter((record: any) => {
+    return (
+      record.status !== "Folga" &&
+      (record.clockIn ||
+        record.lunchStart ||
+        record.lunchEnd ||
+        record.clockOut)
+    );
+  });
 
   return (
     <View style={globalStyles.container}>
@@ -95,14 +101,7 @@ export default function MonthFilter() {
         ) : errorMessage ? (
           <Text style={globalStyles.errorText}>{errorMessage}</Text>
         ) : onlyWorkedRecords.length > 0 ? (
-          <ScrollView
-            style={globalStyles.scrollView}
-            showsVerticalScrollIndicator={false}
-          >
-            {onlyWorkedRecords.map((record: any, index: number) => (
-              <PointRecord key={index} record={record} />
-            ))}
-          </ScrollView>
+          <>{/* saldo + lista */}</>
         ) : (
           <Text style={globalStyles.errorText}>
             Nenhum registro encontrado.

@@ -3,7 +3,7 @@ import { View, Text } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { formatTime, weekDays } from "@/utils/dateUtils";
 import globalStyles from "@/styles/globalStyles";
-import dayjs from "dayjs";
+import { format, parseISO } from "date-fns";
 
 interface PointRecordProps {
   record: any;
@@ -21,11 +21,12 @@ export default function PointRecord({ record }: PointRecordProps) {
     return null;
   }
 
+  const parsedDate = parseISO(record.date);
+
   return (
     <View style={globalStyles.containerReport}>
       <Text style={globalStyles.weekDay}>
-        {weekDays[dayjs(record.date).day()]} -{" "}
-        {dayjs(record.date).format("DD/MM/YYYY")}
+        {weekDays[parsedDate.getDay()]} - {format(parsedDate, "dd/MM/yyyy")}
       </Text>
 
       <View style={globalStyles.containerTime}>
