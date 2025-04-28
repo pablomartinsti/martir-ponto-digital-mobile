@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useFocusEffect } from "expo-router";
-import { View, Text, StyleSheet, Alert } from "react-native";
+import { AppState, View, Text, StyleSheet, Alert } from "react-native";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "@/services/api";
@@ -11,12 +11,14 @@ import { useAuth } from "@/contexts/authContext";
 
 export default function RecordPoint() {
   const { user, token, loading } = useAuth();
+
   const userName = user?.name
     ? user.name.split(" ")[0].charAt(0).toUpperCase() +
       user.name.split(" ")[0].slice(1)
     : "Usuário";
-  const [currentDate, setCurrentDate] = useState<string>("");
-  const [currentTime, setCurrentTime] = useState<string>("");
+
+  const [currentDate, setCurrentDate] = useState("");
+  const [currentTime, setCurrentTime] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
   const [timerPaused, setTimerPaused] = useState(true);
   const [status, setStatus] = useState({
@@ -26,15 +28,7 @@ export default function RecordPoint() {
     clockOut: false,
   });
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!loading && token && user) {
-        fetchWorkStatus();
-      }
-    }, [loading, token, user])
-  );
-
-  // Atualiza data e hora em tempo real
+  // Atualiza a data e hora visível em tempo real
   useEffect(() => {
     const updateDateTime = () => {
       const now = new Date();
@@ -44,153 +38,117 @@ export default function RecordPoint() {
         month: "short",
         year: "numeric",
       } as const;
-      const formattedDate = now.toLocaleDateString("pt-BR", optionsDate);
-      const formattedTime = now.toLocaleTimeString("pt-BR");
-
-      setCurrentDate(formattedDate);
-      setCurrentTime(formattedTime);
+      setCurrentDate(now.toLocaleDateString("pt-BR", optionsDate));
+      setCurrentTime(now.toLocaleTimeString("pt-BR"));
     };
 
     updateDateTime();
     const interval = setInterval(updateDateTime, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
+  // Escuta retorno do app e atualiza status
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | null = null; // Permite ambos os tipos
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        fetchWorkStatus(); // revalida tempo
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
+  // Controla o cronômetro
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
     if (!timerPaused) {
       timer = setInterval(() => {
-        setElapsedTime((prevTime) => prevTime + 1);
+        setElapsedTime((prev) => prev + 1);
       }, 1000);
     }
-
     return () => {
-      if (timer !== null) {
-        clearInterval(timer);
-      }
+      if (timer !== null) clearInterval(timer);
     };
   }, [timerPaused]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading && token && user) {
+        fetchWorkStatus();
+      }
+    }, [loading, token, user])
+  );
 
   const getAuthData = async () => {
     const storedUserData = await AsyncStorage.getItem("userData");
     const parsed = storedUserData ? JSON.parse(storedUserData) : null;
-
-    const token = parsed ? parsed.token : null;
+    const token = parsed?.token;
+    const employeeId = parsed?.id;
     const recordId = await AsyncStorage.getItem("recordId");
-    const employeeId = parsed ? parsed.id : null; // Pegando o employeeId do objeto `userData`
-
-    return { token, recordId, employeeId };
+    return { token, employeeId, recordId };
   };
+
   const updateStatusAndTimer = async (record: any) => {
     if (record._id) {
-      console.log("✅ Salvando recordId:", record._id);
       await AsyncStorage.setItem("recordId", record._id);
-    } else {
-      console.warn("❌ record._id não encontrado no registro:", record);
     }
 
-    const clockIn = !!record.clockIn;
-    const lunchStart = !!record.lunchStart;
-    const lunchEnd = !!record.lunchEnd;
-    const clockOut = !!record.clockOut;
+    const { clockIn, lunchStart, lunchEnd, clockOut } = record;
 
     setStatus({
-      clockIn,
-      lunchStart,
-      lunchEnd,
-      clockOut,
+      clockIn: !!clockIn,
+      lunchStart: !!lunchStart,
+      lunchEnd: !!lunchEnd,
+      clockOut: !!clockOut,
     });
 
     if (clockOut) {
-      // Jornada finalizada
       setElapsedTime(0);
       setTimerPaused(true);
       await AsyncStorage.removeItem("recordId");
-    } else if (clockIn && lunchStart && !lunchEnd) {
-      // Está no almoço: pausa o cronômetro, mantém tempo anterior
-      const startTime = new Date(record.clockIn).getTime();
-      const lunchStartTime = new Date(record.lunchStart).getTime();
-      const elapsedSeconds = Math.floor((lunchStartTime - startTime) / 1000);
-      setElapsedTime(elapsedSeconds);
+      return;
+    }
+
+    const now = Date.now();
+    const start = clockIn ? new Date(clockIn).getTime() : now;
+
+    if (clockIn && lunchStart && !lunchEnd) {
+      const diff = new Date(lunchStart).getTime() - start;
+      setElapsedTime(Math.floor(diff / 1000));
       setTimerPaused(true);
-    } else if (clockIn && !lunchStart) {
-      // Jornada iniciada, ainda não saiu pro almoço
-      const startTime = new Date(record.clockIn).getTime();
-      const currentTime = Date.now();
-      const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
-      setElapsedTime(elapsedSeconds);
-      setTimerPaused(false);
     } else if (clockIn && lunchStart && lunchEnd) {
-      // Voltou do almoço, continua contando desde o retorno
-      const startTime = new Date(record.clockIn).getTime();
       const breakTime =
-        new Date(record.lunchEnd).getTime() -
-        new Date(record.lunchStart).getTime();
-      const currentTime = Date.now();
-      const workedTime = Math.floor(
-        (currentTime - startTime - breakTime) / 1000
-      );
-      setElapsedTime(workedTime);
+        new Date(lunchEnd).getTime() - new Date(lunchStart).getTime();
+      const worked = now - start - breakTime;
+      setElapsedTime(Math.floor(worked / 1000));
+      setTimerPaused(false);
+    } else if (clockIn) {
+      const diff = now - start;
+      setElapsedTime(Math.floor(diff / 1000));
       setTimerPaused(false);
     } else {
-      // Jornada ainda não iniciada
       setElapsedTime(0);
       setTimerPaused(true);
     }
   };
 
   const fetchWorkStatus = async () => {
-    console.log("📡 Chamando fetchWorkStatus()");
-
     try {
       const { token } = await getAuthData();
-      if (!token) {
-        Alert.alert("Erro", "Usuário não autenticado.");
-        return;
-      }
+      if (!token) return;
 
-      const today = new Date();
-      const todayBrasilia = new Date(today.getTime() - 3 * 60 * 60 * 1000)
+      const todayBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0];
 
-      console.log("📆 Data ajustada para Brasil:", todayBrasilia);
-
       const response = await api.get(
         `/time-records?period=day&startDate=${todayBrasilia}&endDate=${todayBrasilia}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const records = response.data.records;
-
-      if (!records || records.length === 0) {
-        console.warn("⚠ Nenhum registro retornado pela API.");
-        return;
-      }
-
-      await updateStatusAndTimer(records[0]);
-    } catch (error: any) {
-      const currentToken = await AsyncStorage.getItem("userData");
-
-      if (!currentToken) {
-        console.log("🚫 Sessão já foi limpa pelo interceptor. Nada a fazer.");
-        return;
-      }
-
-      if (error.response?.status === 401) {
-        Alert.alert("Sessão expirada", "Faça login novamente.");
-        return;
-      }
-
-      if (error.response?.status === 404) {
-        Alert.alert(
-          "Iniciar Jornada",
-          "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
-        );
+      if (records.length > 0) {
+        await updateStatusAndTimer(records[0]);
+      } else {
         setElapsedTime(0);
         setTimerPaused(true);
         setStatus({
@@ -199,202 +157,108 @@ export default function RecordPoint() {
           lunchEnd: false,
           clockOut: false,
         });
-        return;
       }
-
-      console.error("❌ Erro ao buscar status da jornada:", error);
-      Alert.alert("Erro", "Não foi possível recuperar o status da jornada.");
+    } catch (error: any) {
+      const msg = error.response?.data?.error;
+      if (error.response?.status === 401) {
+        Alert.alert("Sessão expirada", "Faça login novamente.");
+      } else if (error.response?.status === 404) {
+        Alert.alert(
+          "Iniciar Jornada",
+          "Você ainda não iniciou a jornada hoje."
+        );
+      } else {
+        Alert.alert("Alert", msg || "Erro ao buscar status da jornada.");
+      }
     }
   };
 
-  // Formata o tempo decorrido
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-
     return `${hrs.toString().padStart(2, "0")}:${mins
       .toString()
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const startWorkDay = async () => {
+  // Funções de ações
+  const handlePost = async (
+    endpoint: string,
+    body: object,
+    successMsg: string,
+    stateUpdate?: () => void
+  ) => {
     try {
-      const { token, employeeId } = await getAuthData();
-
-      if (!token || !employeeId) {
-        Alert.alert("Erro", "Usuário não autenticado.");
-        return;
-      }
-
-      const latitude = -18.9127814;
-      const longitude = -48.1886814;
-
-      const response = await api.post("/clock-in", {
-        employeeId,
-        latitude,
-        longitude,
-      });
-
-      if (response.status === 201 || response.status === 200) {
-        const { _id: recordId } = response.data;
-        const startTime = new Date().getTime(); // 🔹 Captura a hora de início
-        await AsyncStorage.setItem("startTime", startTime.toString()); // 🔹 Salva no AsyncStorage
-
-        await AsyncStorage.setItem("recordId", recordId);
-        setTimerPaused(false);
-        setStatus((prev) => ({ ...prev, clockIn: true })); // Atualiza o estado
-        Alert.alert("Sucesso", "Jornada de trabalho iniciada!");
-      } else {
-        Alert.alert("Erro", "Não foi possível iniciar a jornada.");
+      const response = await api.post(endpoint, body);
+      if (response.status === 200 || response.status === 201) {
+        if (stateUpdate) stateUpdate();
+        Alert.alert("Sucesso", successMsg);
       }
     } catch (error: any) {
-      console.error("Erro ao iniciar jornada:", error);
-
-      const status = error?.response?.status;
-      const mensagem = error?.response?.data?.error;
-      console.log("🧾 Mensagem recebida:", mensagem);
-
-      if (status === 403 && typeof mensagem === "string") {
-        Alert.alert("Atenção", mensagem);
-        return;
-      }
-
-      if (status === 400 && mensagem === "Jornada já iniciada hoje.") {
-        Alert.alert("Aviso", "Você já iniciou sua jornada hoje.");
-        return;
-      }
-
-      Alert.alert(
-        "Erro",
-        "Não foi possível iniciar a jornada. Tente novamente."
-      );
+      const msg = error.response?.data?.error;
+      Alert.alert("Alert", msg || "Erro ao executar a ação.");
     }
+  };
+
+  const startWorkDay = async () => {
+    const { token, employeeId } = await getAuthData();
+    if (!token || !employeeId) return;
+
+    const coords = { latitude: -18.9127814, longitude: -48.1886814 };
+    await handlePost(
+      "/clock-in",
+      { employeeId, ...coords },
+      "Jornada iniciada!",
+      () => {
+        setTimerPaused(false);
+        setStatus((s) => ({ ...s, clockIn: true }));
+      }
+    );
   };
 
   const startLunch = async () => {
-    try {
-      const { token, recordId } = await getAuthData();
+    const { token, recordId } = await getAuthData();
+    if (!token || !recordId) return;
 
-      if (!token || !recordId) {
-        Alert.alert(
-          "Erro",
-          "Usuário não autenticado ou registro não encontrado."
-        );
-        return;
-      }
-
-      const latitude = -18.9127814;
-      const longitude = -48.1886814;
-
-      const response = await api.post("/lunch-start", {
-        recordId,
-        latitude,
-        longitude,
-      });
-
-      if (response.status === 200 || response.status === 201) {
+    const coords = { latitude: -18.9127814, longitude: -48.1886814 };
+    await handlePost(
+      "/lunch-start",
+      { recordId, ...coords },
+      "Saída para almoço registrada!",
+      () => {
         setTimerPaused(true);
-        setStatus((prev) => ({ ...prev, lunchStart: true }));
-        Alert.alert("Sucesso", "Saída para almoço registrada!");
-      } else {
-        Alert.alert("Erro", "Não foi possível registrar a saída para almoço.");
+        setStatus((s) => ({ ...s, lunchStart: true }));
       }
-    } catch (error) {
-      console.error("Erro ao registrar saída para almoço:", error);
-      Alert.alert("Erro", "Erro ao registrar saída para almoço.");
-    }
+    );
   };
 
   const returnFromLunch = async () => {
-    try {
-      const { token, recordId } = await getAuthData();
+    const { token, recordId } = await getAuthData();
+    if (!token || !recordId) return;
 
-      if (!token || !recordId) {
-        Alert.alert(
-          "Erro",
-          "Usuário não autenticado ou registro não encontrado."
-        );
-        return;
-      }
-
-      const latitude = -18.9127814;
-      const longitude = -48.1886814;
-
-      const response = await api.post("/lunch-end", {
-        recordId,
-        latitude,
-        longitude,
-      });
-
-      if (response.status === 200 || response.status === 201) {
+    const coords = { latitude: -18.9127814, longitude: -48.1886814 };
+    await handlePost(
+      "/lunch-end",
+      { recordId, ...coords },
+      "Retorno do almoço registrado!",
+      () => {
         setTimerPaused(false);
-        setStatus((prev) => ({ ...prev, lunchEnd: true }));
-        Alert.alert("Sucesso", "Retorno do almoço registrado!");
-      } else {
-        Alert.alert("Erro", "Não foi possível registrar o retorno do almoço.");
+        setStatus((s) => ({ ...s, lunchEnd: true }));
       }
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        console.warn("⚠ Nenhum registro encontrado (404).");
-        Alert.alert(
-          "Iniciar Jornada",
-          "Você ainda não iniciou a jornada de trabalho hoje. Clique em 'Iniciar Jornada' para começar."
-        );
-        setElapsedTime(0);
-        setTimerPaused(true);
-        setStatus({
-          clockIn: false,
-          lunchStart: false,
-          lunchEnd: false,
-          clockOut: false,
-        });
-        return;
-      }
-
-      if (error.response?.status === 401) {
-        Alert.alert("Sessão expirada", "Por favor, faça login novamente.");
-        return;
-      }
-      if (
-        error.response?.status === 403 &&
-        typeof error.response?.data?.error === "string" &&
-        error.response.data.error.includes(
-          "Tempo mínimo de intervalo para almoço"
-        )
-      ) {
-        Alert.alert("Atenção", error.response.data.error);
-        return;
-      }
-
-      console.error("❌ Erro ao registrar retorno do almoço:", error);
-      Alert.alert("Erro", "Não foi possível registrar o retorno do almoço.");
-    }
+    );
   };
 
   const finishWorkDay = async () => {
-    console.log("🔁 fetchWorkStatus rodou");
-    try {
-      const { token, recordId } = await getAuthData();
+    const { token, recordId } = await getAuthData();
+    if (!token || !recordId) return;
 
-      if (!token || !recordId) {
-        Alert.alert(
-          "Erro",
-          "Usuário não autenticado ou registro não encontrado."
-        );
-        return;
-      }
-
-      const latitude = -18.9127814;
-      const longitude = -48.1886814;
-
-      const response = await api.post("/clock-out", {
-        recordId,
-        latitude,
-        longitude,
-      });
-
-      if (response.status === 200 || response.status === 201) {
+    const coords = { latitude: -18.9127814, longitude: -48.1886814 };
+    await handlePost(
+      "/clock-out",
+      { recordId, ...coords },
+      "Jornada finalizada!",
+      async () => {
         await AsyncStorage.multiRemove(["startTime", "recordId"]);
         setElapsedTime(0);
         setTimerPaused(true);
@@ -404,15 +268,8 @@ export default function RecordPoint() {
           lunchEnd: false,
           clockOut: false,
         });
-
-        Alert.alert("Sucesso", "Jornada finalizada!");
-      } else {
-        Alert.alert("Erro", "Não foi possível finalizar a jornada.");
       }
-    } catch (error) {
-      console.error("Erro ao finalizar jornada:", error);
-      Alert.alert("Erro", "Erro ao finalizar a jornada.");
-    }
+    );
   };
 
   return (
@@ -423,11 +280,13 @@ export default function RecordPoint() {
         <Text style={styles.Text}>{currentDate}</Text>
         <Text style={styles.Text}>{currentTime}</Text>
       </View>
+
       <View style={globalStyles.border} />
 
       <View style={styles.boxClock}>
         <Text style={styles.clockText}>{formatTime(elapsedTime)}</Text>
       </View>
+
       <View style={styles.boxButton}>
         {status.clockOut ? (
           <Button title="Iniciar Jornada" onPress={startWorkDay} />
@@ -447,6 +306,7 @@ export default function RecordPoint() {
   );
 }
 
+// Styles permanecem os mesmos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -460,18 +320,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   boxDate: {
-    display: "flex",
-    alignItems: "center",
     flexDirection: "row",
     gap: 50,
     marginTop: 50,
+    alignItems: "center",
   },
   Text: {
     color: "#fff",
     fontSize: 20,
     textAlign: "center",
   },
-
   boxClock: {
     width: 300,
     height: 300,

@@ -78,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(user);
     setIsAuthenticated(true);
     await AsyncStorage.setItem("userData", JSON.stringify({ token, ...user }));
+    console.log(token, user);
   };
 
   // Função para logout

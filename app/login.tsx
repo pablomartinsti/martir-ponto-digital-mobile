@@ -1,129 +1,18 @@
-import React, { useState } from "react";
-import { useAuth } from "@/contexts/authContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Alert,
-  StatusBar,
-  Image,
-  TextInput,
-} from "react-native";
-import { useForm, Controller, SubmitHandler } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import React from "react";
+import { View, Text, StyleSheet, StatusBar, Image, Alert } from "react-native";
+import { Controller } from "react-hook-form";
 import MaskInput from "react-native-mask-input";
-import api from "../services/api";
-import { useRouter } from "expo-router";
+import { useLogin } from "@/hooks/useLogin";
 import Button from "@/components/Button";
 
-// Tipo dos dados do formulário
-type FormData = {
-  cpf: string;
-  password: string;
-};
+export default function LoginScreen() {
+  const { control, handleSubmit, onSubmit, errors, isLoading } = useLogin();
 
-// Esquema de validação com Zod
-const loginSchema = z.object({
-  cpf: z
-    .string()
-    .nonempty("O CPF é obrigatório.")
-    .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, "Formato de CPF inválido.")
-    .transform((val) => val.trim()),
-  password: z
-    .string()
-    .nonempty("A senha é obrigatória.")
-    .min(6, "A senha deve ter no mínimo 6 caracteres.")
-    .transform((val) => val.trim()),
-});
-
-const loginToAPI = async (cpf: string, password: string) => {
-  try {
-    const response = await api.post("/login", { cpf, password });
-
-    if (response.data.token && response.data.user) {
-      const { token, user } = response.data;
-
-      if (user.role !== "employee") {
-        throw new Error("Este app é exclusivo para funcionários.");
-      }
-
-      // Salvar os dados no AsyncStorage
-      await AsyncStorage.setItem(
-        "userData",
-        JSON.stringify({ token, ...user })
-      );
-
-      return response.data;
-    } else {
-      throw new Error("Credenciais inválidas.");
-    }
-  } catch (error: any) {
-    console.error("Erro ao fazer login:", error);
-
-    if (error.response) {
-      const status = error.response.status;
-      const errorMsg = error.response.data?.error || "Erro ao fazer login.";
-
-      switch (status) {
-        case 401:
-          throw new Error("Senha inválida. Tente novamente.");
-        case 403:
-          throw new Error(
-            "Funcionário desativado. Entre em contato com o administrador."
-          );
-        case 404:
-          throw new Error("Funcionário não encontrado. Verifique seu CPF.");
-        default:
-          throw new Error(errorMsg);
-      }
-    }
-
-    throw new Error(
-      "Erro ao conectar com o servidor. Tente novamente mais tarde."
-    );
-  }
-};
-
-const LoginScreen = () => {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(loginSchema),
-  });
-
-  // Dentro do componente LoginScreen:
-  const { login } = useAuth(); // usa o login do contexto
-
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
-    const cleanCpf = data.cpf.replace(/\D/g, ""); // Remove a máscara do CPF
-    setIsLoading(true);
-
+  const handleFormSubmit = async (data: any) => {
     try {
-      const response = await loginToAPI(cleanCpf, data.password);
-
-      if (response.token && response.user) {
-        // Limpa dados do funcionário anterior
-        await AsyncStorage.removeItem("recordId");
-        await AsyncStorage.removeItem("startTimestamp");
-
-        // Atualiza o contexto de autenticação
-        login(response.token, response.user);
-
-        // Redireciona (o contexto já redireciona também, mas isso garante fluidez)
-        router.push("/welcome");
-      } else {
-        Alert.alert("Erro", "Credenciais inválidas.");
-      }
+      await onSubmit(data);
     } catch (error: any) {
       Alert.alert("Erro", error.message || "Erro ao fazer login.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -136,7 +25,7 @@ const LoginScreen = () => {
         style={styles.logo}
       />
 
-      {/* Campo CPF */}
+      {/* CPF */}
       <Controller
         control={control}
         name="cpf"
@@ -166,23 +55,19 @@ const LoginScreen = () => {
               keyboardType="numeric"
             />
             {errors.cpf && (
-              <Text style={styles.errorText}>
-                {typeof errors.cpf.message === "string"
-                  ? errors.cpf.message
-                  : ""}
-              </Text>
+              <Text style={styles.errorText}>{errors.cpf.message}</Text>
             )}
           </View>
         )}
       />
 
-      {/* Campo Senha */}
+      {/* Senha */}
       <Controller
         control={control}
         name="password"
         render={({ field: { onChange, value } }) => (
           <View style={styles.view}>
-            <TextInput
+            <MaskInput
               style={[styles.input, errors.password && styles.errorInput]}
               placeholder="Digite sua senha"
               secureTextEntry
@@ -190,31 +75,23 @@ const LoginScreen = () => {
               value={value || ""}
             />
             {errors.password && (
-              <Text style={styles.errorText}>
-                {typeof errors.password.message === "string"
-                  ? errors.password.message
-                  : ""}
-              </Text>
+              <Text style={styles.errorText}>{errors.password.message}</Text>
             )}
           </View>
         )}
       />
+
       <View style={styles.view}>
         <Button
           title={isLoading ? "Conectando..." : "Entrar"}
-          onPress={handleSubmit(onSubmit)}
+          onPress={handleSubmit(handleFormSubmit)}
           disabled={isLoading}
           loading={isLoading}
         />
-        {isLoading && (
-          <Text style={styles.loadingText}>
-            Aguardando o servidor iniciar... Isso pode levar alguns segundos.
-          </Text>
-        )}
       </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -260,5 +137,3 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
-
-export default LoginScreen;
