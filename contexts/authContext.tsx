@@ -43,7 +43,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           const parsed = JSON.parse(storedUserData);
 
           if (isTokenExpired(parsed.token)) {
-            console.log("🚫 Token expirado. Deslogando...");
             await AsyncStorage.removeItem("userData");
             setToken(null);
             setUser(null);
@@ -69,7 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     checkAuth();
-    console.log("✅ Token e usuário carregados:", token, user);
   }, []);
 
   // Função para login
@@ -78,7 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(user);
     setIsAuthenticated(true);
     await AsyncStorage.setItem("userData", JSON.stringify({ token, ...user }));
-    console.log(token, user);
   };
 
   // Função para logout

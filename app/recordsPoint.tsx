@@ -8,6 +8,7 @@ import Button from "@/components/Button";
 import MenuComponent from "@/components/Menu";
 import globalStyles from "@/styles/globalStyles";
 import { useAuth } from "@/contexts/authContext";
+import { ActivityIndicator } from "react-native";
 
 export default function RecordPoint() {
   const { user, token, loading } = useAuth();
@@ -16,6 +17,7 @@ export default function RecordPoint() {
     ? user.name.split(" ")[0].charAt(0).toUpperCase() +
       user.name.split(" ")[0].slice(1)
     : "Usuário";
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   const [currentDate, setCurrentDate] = useState("");
   const [currentTime, setCurrentTime] = useState("");
@@ -201,11 +203,48 @@ export default function RecordPoint() {
     }
   };
 
+  async function getCurrentLocation() {
+    try {
+      setIsGettingLocation(true);
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        throw new Error("Permissão de localização negada.");
+      }
+
+      const isEnabled = await Location.hasServicesEnabledAsync();
+      if (!isEnabled) {
+        throw new Error("O serviço de localização está desativado.");
+      }
+
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      if (!location) {
+        throw new Error("Não foi possível obter a localização.");
+      }
+
+      const { latitude, longitude } = location.coords;
+
+      return { latitude, longitude };
+    } catch (error) {
+      console.error("Erro ao obter localização:", error);
+      Alert.alert(
+        "Erro de Localização",
+        "Não foi possível obter sua localização. Verifique se o GPS está ligado."
+      );
+      throw error;
+    } finally {
+      setIsGettingLocation(false);
+    }
+  }
+
   const startWorkDay = async () => {
     const { token, employeeId } = await getAuthData();
     if (!token || !employeeId) return;
 
-    const coords = { latitude: -18.9127814, longitude: -48.1886814 };
+    const coords = await getCurrentLocation();
     await handlePost(
       "/clock-in",
       { employeeId, ...coords },
@@ -221,7 +260,7 @@ export default function RecordPoint() {
     const { token, recordId } = await getAuthData();
     if (!token || !recordId) return;
 
-    const coords = { latitude: -18.9127814, longitude: -48.1886814 };
+    const coords = await getCurrentLocation();
     await handlePost(
       "/lunch-start",
       { recordId, ...coords },
@@ -237,7 +276,7 @@ export default function RecordPoint() {
     const { token, recordId } = await getAuthData();
     if (!token || !recordId) return;
 
-    const coords = { latitude: -18.9127814, longitude: -48.1886814 };
+    const coords = await getCurrentLocation();
     await handlePost(
       "/lunch-end",
       { recordId, ...coords },
@@ -253,7 +292,7 @@ export default function RecordPoint() {
     const { token, recordId } = await getAuthData();
     if (!token || !recordId) return;
 
-    const coords = { latitude: -18.9127814, longitude: -48.1886814 };
+    const coords = await getCurrentLocation();
     await handlePost(
       "/clock-out",
       { recordId, ...coords },
@@ -271,6 +310,16 @@ export default function RecordPoint() {
       }
     );
   };
+  if (isGettingLocation) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#ffffff" />
+        <Text style={{ color: "#fff", fontSize: 18, marginTop: 20 }}>
+          Obtendo sua localização...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

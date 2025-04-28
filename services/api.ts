@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { logEventoApp } from "../utils/logEventoApp"; // 👉 importa aqui
 
 const api = axios.create({
-  baseURL: "http://192.168.100.94:3001",
+  baseURL: "https://api.martircontabil.com.br",
   timeout: 2000,
 });
 
