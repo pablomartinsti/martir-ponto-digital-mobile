@@ -30,16 +30,6 @@ export default function MonthFilter() {
     canGoNext,
   } = useTimeRecords("month");
 
-  const onlyWorkedRecords = (data?.records || []).filter((record: any) => {
-    return (
-      record.status !== "Folga" &&
-      (record.clockIn ||
-        record.lunchStart ||
-        record.lunchEnd ||
-        record.clockOut)
-    );
-  });
-
   return (
     <View style={globalStyles.container}>
       <Text style={globalStyles.title}>Olá, {userName}</Text>
@@ -95,19 +85,21 @@ export default function MonthFilter() {
 
       <View style={globalStyles.border} />
 
-      <View style={globalStyles.content}>
+      <ScrollView style={globalStyles.content}>
         {loading ? (
           <ActivityIndicator size="large" color="#fff" />
         ) : errorMessage ? (
           <Text style={globalStyles.errorText}>{errorMessage}</Text>
-        ) : onlyWorkedRecords.length > 0 ? (
-          <>{/* saldo + lista */}</>
+        ) : data?.records?.length > 0 ? (
+          data.records.map((record: any) => (
+            <PointRecord key={record.date} record={record} />
+          ))
         ) : (
           <Text style={globalStyles.errorText}>
             Nenhum registro encontrado.
           </Text>
         )}
-      </View>
+      </ScrollView>
 
       <MenuComponent />
     </View>

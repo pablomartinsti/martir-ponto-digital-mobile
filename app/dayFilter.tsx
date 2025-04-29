@@ -53,10 +53,7 @@ export default function DayFilter() {
         ) : errorMessage ? (
           <Text style={globalStyles.errorText}>{errorMessage}</Text>
         ) : data && data.records && data.records.length > 0 ? (
-          data.records[0].clockIn ||
-          data.records[0].lunchStart ||
-          data.records[0].lunchEnd ||
-          data.records[0].clockOut ? (
+          data.records[0].clockIn ? (
             <PointRecord record={data.records[0]} />
           ) : (
             <Text style={globalStyles.errorText}>
