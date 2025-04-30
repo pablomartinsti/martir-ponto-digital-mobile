@@ -44,7 +44,8 @@
           "locationAlwaysAndWhenInUsePermission": "Permitir o uso da localização para bater o ponto.",
           "locationWhenInUsePermission": "Permitir o uso da localização enquanto o app está em uso."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
