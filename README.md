@@ -1,50 +1,29 @@
-# Welcome to your Expo app 👋
+# 📱 Martir Ponto Digital - Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo mobile desenvolvido em **React Native com Expo**, parte do sistema **Martir Ponto Digital**, que oferece uma solução completa de controle de ponto para pequenas empresas.
 
-## Get started
+Este app é voltado para os **funcionários**, permitindo que registrem sua jornada de trabalho diretamente pelo celular, com **validação por GPS**, horário e status da jornada.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 🚀 Funcionalidades
 
-2. Start the app
+- Autenticação de funcionário com token
+- Início, pausa e retorno do almoço, fim da jornada
+- Registro de ponto com **validação de localização (GPS)**
+- Consulta de registros diários, semanais e mensais
+- Visualização do tempo de jornada em tempo real
+- Alertas e validações inteligentes (controle de horário de inicio e tempo mínimo de almoço)
 
-   ```bash
-    npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🧰 Tecnologias utilizadas
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **React Native**
+- **Expo Router**
+- **Axios** para comunicação com a API
+- **AsyncStorage** para autenticação
+- **Expo Location** para captura do GPS
+- **TypeScript**
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
