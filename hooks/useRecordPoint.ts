@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Alert, AppState } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   clockIn,
   clockOut,
@@ -8,7 +7,10 @@ import {
   lunchEnd,
   getTodayRecord,
 } from "@/services/recordPointService";
+import { getRecordId, getStoredUserData, setRecordId, clearRecordId } from "@/services/storageService";
+import { getCurrentCoordinates } from "@/services/locationService";
 import { useClock } from "@/hooks/useClock";
+import { TimeRecord } from "@/types/timeRecord";
 
 export function useRecordPoint() {
   const {
@@ -29,58 +31,68 @@ export function useRecordPoint() {
     clockOut: false,
   });
 
-  // Atualiza status ao voltar do background
   useEffect(() => {
+    fetchWorkStatus();
+
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active") fetchWorkStatus();
     });
+
     return () => subscription.remove();
   }, []);
 
   const getAuthData = async () => {
-    const data = await AsyncStorage.getItem("userData");
-    const parsed = data ? JSON.parse(data) : null;
-    const recordId = await AsyncStorage.getItem("recordId");
-    return { token: parsed?.token, employeeId: parsed?.id, recordId };
+    const userData = await getStoredUserData();
+    const recordId = await getRecordId();
+    return { token: userData?.token, employeeId: userData?.id, recordId };
   };
 
-  const updateStatusAndTimer = (record: any) => {
-    const { clockIn, lunchStart, lunchEnd, clockOut } = record;
+  const updateStatusAndTimer = async (record: TimeRecord) => {
+    const { clockIn: entry, lunchStart: lunchOut, lunchEnd: lunchBack, clockOut: exit } = record;
 
     setStatus({
-      clockIn: !!clockIn,
-      lunchStart: !!lunchStart,
-      lunchEnd: !!lunchEnd,
-      clockOut: !!clockOut,
+      clockIn: !!entry,
+      lunchStart: !!lunchOut,
+      lunchEnd: !!lunchBack,
+      clockOut: !!exit,
     });
 
-    if (clockOut) {
+    if (record._id) {
+      await setRecordId(record._id);
+    }
+
+    if (exit) {
       resetTimer();
-      AsyncStorage.removeItem("recordId");
+      await clearRecordId();
       return;
     }
 
     const now = Date.now();
-    const start = clockIn ? new Date(clockIn).getTime() : now;
+    const start = entry ? new Date(entry).getTime() : now;
 
-    if (clockIn && lunchStart && !lunchEnd) {
-      const diff = new Date(lunchStart).getTime() - start;
-      setCustomElapsedTime(Math.floor(diff / 1000));
+    if (entry && lunchOut && !lunchBack) {
+      const workedBeforeLunch = new Date(lunchOut).getTime() - start;
+      setCustomElapsedTime(Math.max(0, Math.floor(workedBeforeLunch / 1000)));
       pauseTimer();
-    } else if (clockIn && lunchStart && lunchEnd) {
-      const breakTime =
-        new Date(lunchEnd).getTime() - new Date(lunchStart).getTime();
-      const worked = now - start - breakTime;
-      setCustomElapsedTime(Math.floor(worked / 1000));
-      startTimer();
-    } else if (clockIn) {
-      const diff = now - start;
-      setCustomElapsedTime(Math.floor(diff / 1000));
-      startTimer();
-    } else {
-      resetTimer();
-      pauseTimer();
+      return;
     }
+
+    if (entry && lunchOut && lunchBack) {
+      const breakTime = new Date(lunchBack).getTime() - new Date(lunchOut).getTime();
+      const worked = now - start - breakTime;
+      setCustomElapsedTime(Math.max(0, Math.floor(worked / 1000)));
+      startTimer();
+      return;
+    }
+
+    if (entry) {
+      const worked = now - start;
+      setCustomElapsedTime(Math.max(0, Math.floor(worked / 1000)));
+      startTimer();
+      return;
+    }
+
+    resetStatus();
   };
 
   const fetchWorkStatus = async () => {
@@ -88,21 +100,15 @@ export function useRecordPoint() {
       const { token } = await getAuthData();
       if (!token) return;
 
-      const response = await getTodayRecord(token);
-      const records = Array.isArray(response.data?.records)
-        ? response.data.records
-        : [];
-      if (records.length > 0) {
-        await AsyncStorage.setItem("recordId", records[0]._id);
-        updateStatusAndTimer(records[0]);
+      const record = await getTodayRecord();
+
+      if (record) {
+        await updateStatusAndTimer(record);
       } else {
         resetStatus();
       }
     } catch (error: any) {
-      Alert.alert(
-        "Alert",
-        error.response?.data?.error || "Erro ao buscar status."
-      );
+      Alert.alert("Aviso", error.response?.data?.error || error.message || "Erro ao buscar status.");
     }
   };
 
@@ -119,19 +125,17 @@ export function useRecordPoint() {
 
   const startWorkDay = async () => {
     try {
-      const { token, employeeId } = await getAuthData();
-      if (!token || !employeeId) return;
+      const { token } = await getAuthData();
+      if (!token) return;
 
-      const { data } = await clockIn(employeeId, -18.9127814, -48.1886814);
-      await AsyncStorage.setItem("recordId", data._id);
-      startTimer();
-      setStatus((prev) => ({ ...prev, clockIn: true }));
-      Alert.alert("Sucesso", "Jornada iniciada!");
+      const coordinates = await getCurrentCoordinates();
+      const { data } = await clockIn(coordinates.latitude, coordinates.longitude);
+
+      await setRecordId(data._id);
+      await updateStatusAndTimer(data);
+      Alert.alert("Sucesso", "Jornada iniciada.");
     } catch (error: any) {
-      Alert.alert(
-        "Alert",
-        error.response?.data?.error || "Erro ao iniciar jornada."
-      );
+      Alert.alert("Aviso", error.response?.data?.error || error.message || "Erro ao iniciar jornada.");
     }
   };
 
@@ -140,15 +144,13 @@ export function useRecordPoint() {
       const { token, recordId } = await getAuthData();
       if (!token || !recordId) return;
 
-      await lunchStart(recordId, -18.9127814, -48.1886814);
-      pauseTimer();
-      setStatus((prev) => ({ ...prev, lunchStart: true }));
-      Alert.alert("Sucesso", "Saída para almoço registrada!");
+      const coordinates = await getCurrentCoordinates();
+      const { data } = await lunchStart(recordId, coordinates.latitude, coordinates.longitude);
+
+      await updateStatusAndTimer(data);
+      Alert.alert("Sucesso", "Saída para almoço registrada.");
     } catch (error: any) {
-      Alert.alert(
-        "Alert",
-        error.response?.data?.error || "Erro ao sair para almoço."
-      );
+      Alert.alert("Aviso", error.response?.data?.error || error.message || "Erro ao sair para almoço.");
     }
   };
 
@@ -157,15 +159,13 @@ export function useRecordPoint() {
       const { token, recordId } = await getAuthData();
       if (!token || !recordId) return;
 
-      await lunchEnd(recordId, -18.9127814, -48.1886814);
-      startTimer();
-      setStatus((prev) => ({ ...prev, lunchEnd: true }));
-      Alert.alert("Sucesso", "Retorno do almoço registrado!");
+      const coordinates = await getCurrentCoordinates();
+      const { data } = await lunchEnd(recordId, coordinates.latitude, coordinates.longitude);
+
+      await updateStatusAndTimer(data);
+      Alert.alert("Sucesso", "Retorno do almoço registrado.");
     } catch (error: any) {
-      Alert.alert(
-        "Alert",
-        error.response?.data?.error || "Erro ao retornar do almoço."
-      );
+      Alert.alert("Aviso", error.response?.data?.error || error.message || "Erro ao retornar do almoço.");
     }
   };
 
@@ -174,15 +174,15 @@ export function useRecordPoint() {
       const { token, recordId } = await getAuthData();
       if (!token || !recordId) return;
 
-      await clockOut(recordId, -18.9127814, -48.1886814);
-      await AsyncStorage.multiRemove(["startTime", "recordId"]);
+      const coordinates = await getCurrentCoordinates();
+      const { data } = await clockOut(recordId, coordinates.latitude, coordinates.longitude);
+
+      await updateStatusAndTimer(data);
+      await clearRecordId();
       resetStatus();
-      Alert.alert("Sucesso", "Jornada finalizada!");
+      Alert.alert("Sucesso", "Jornada finalizada.");
     } catch (error: any) {
-      Alert.alert(
-        "Alert",
-        error.response?.data?.error || "Erro ao finalizar jornada."
-      );
+      Alert.alert("Aviso", error.response?.data?.error || error.message || "Erro ao finalizar jornada.");
     }
   };
 

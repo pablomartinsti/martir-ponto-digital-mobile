@@ -1,40 +1,31 @@
 import React from "react";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { View, Text } from "react-native";
+import { useEffect } from "react";
+import { ActivityIndicator, View } from "react-native";
+import { getStoredUserData } from "@/services/storageService";
+import { isTokenExpired } from "@/utils/auth";
 
 export default function Index() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkAuthentication = async () => {
-      try {
-        const storedUserData = await AsyncStorage.getItem("userData");
-        if (storedUserData) {
-          router.replace("/recordsPoint"); // Nome corrigido
-        } else {
-          router.replace("/login");
-        }
-      } catch (error) {
-        console.error("Erro ao verificar autenticação:", error);
-        router.replace("/login");
-      } finally {
-        setLoading(false);
+      const userData = await getStoredUserData();
+
+      if (userData?.token && !isTokenExpired(userData.token)) {
+        router.replace("/welcome");
+        return;
       }
+
+      router.replace("/login");
     };
 
     checkAuthentication();
-  }, []);
+  }, [router]);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Carregando...</Text>
-      </View>
-    );
-  }
-
-  return null;
+  return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#011D4C" }}>
+      <ActivityIndicator size="large" color="#fff" />
+    </View>
+  );
 }

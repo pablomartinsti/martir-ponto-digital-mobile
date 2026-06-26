@@ -1,64 +1,60 @@
-// AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { isTokenExpired } from "@/utils/auth";
-import { Alert } from "react-native";
-
-type UserData = {
-  id: string;
-  name: string;
-  role: string;
-};
+import {
+  clearLogoutReason,
+  clearStoredUserData,
+  getLogoutReason,
+  getStoredUserData,
+  setStoredUserData,
+} from "@/services/storageService";
+import { AuthUser } from "@/types/auth";
 
 type AuthContextData = {
   isAuthenticated: boolean;
   token: string | null;
-  user: UserData | null;
+  user: AuthUser | null;
   loading: boolean;
-  login: (token: string, user: UserData) => void;
-  logout: () => void;
+  login: (token: string, user: AuthUser) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextData | null>(null);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<UserData | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [logoutReason, setLogoutReason] = useState<string | null>(null);
 
   const router = useRouter();
 
-  // Verifica autenticação ao iniciar o app
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const storedUserData = await AsyncStorage.getItem("userData");
+        const storedUserData = await getStoredUserData();
 
-        if (storedUserData) {
-          const parsed = JSON.parse(storedUserData);
-
-          if (isTokenExpired(parsed.token)) {
-            await AsyncStorage.removeItem("userData");
-            setToken(null);
-            setUser(null);
-            setIsAuthenticated(false);
-          } else {
-            setToken(parsed.token);
-            setUser({
-              id: parsed.id,
-              name: parsed.name,
-              role: parsed.role,
-            });
-            setIsAuthenticated(true);
-          }
+        if (!storedUserData || isTokenExpired(storedUserData.token)) {
+          await clearStoredUserData();
+          setToken(null);
+          setUser(null);
+          setIsAuthenticated(false);
+          return;
         }
+
+        setToken(storedUserData.token);
+        setUser({
+          id: storedUserData.id,
+          name: storedUserData.name,
+          role: storedUserData.role,
+          companyId: storedUserData.companyId,
+          companyName: storedUserData.companyName,
+        });
+        setIsAuthenticated(true);
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
+        await clearStoredUserData();
         setToken(null);
         setUser(null);
         setIsAuthenticated(false);
@@ -70,40 +66,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     checkAuth();
   }, []);
 
-  // Função para login
-  const login = async (token: string, user: UserData) => {
-    setToken(token);
-    setUser(user);
+  const login = async (newToken: string, newUser: AuthUser) => {
+    setToken(newToken);
+    setUser(newUser);
     setIsAuthenticated(true);
-    await AsyncStorage.setItem("userData", JSON.stringify({ token, ...user }));
+    await setStoredUserData({ token: newToken, ...newUser });
+    router.replace("/welcome");
   };
 
-  // Função para logout
   const logout = async () => {
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
-    await AsyncStorage.clear();
-    router.push("/login");
+    await clearStoredUserData();
+    router.replace("/login");
   };
 
-  // Redirecionamento condicional
   useEffect(() => {
-    if (!loading) {
-      if (!isAuthenticated) {
-        router.push("/login");
-      } else {
-        router.push("/welcome");
-      }
+    if (loading) return;
+
+    if (!isAuthenticated) {
+      router.replace("/login");
     }
   }, [loading, isAuthenticated, router]);
 
   useEffect(() => {
     const checkLogoutReason = async () => {
-      const reason = await AsyncStorage.getItem("logoutReason");
+      const reason = await getLogoutReason();
       if (reason === "expired") {
-        Alert.alert("Sessão expirada", "Por favor, faça login novamente.");
-        await AsyncStorage.removeItem("logoutReason");
+        Alert.alert("Sessão expirada", "Faça login novamente.");
+        await clearLogoutReason();
       }
     };
 
@@ -113,9 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [isAuthenticated, loading]);
 
   return (
-    <AuthContext.Provider
-      value={{ isAuthenticated, token, user, loading, login, logout }}
-    >
+    <AuthContext.Provider value={{ isAuthenticated, token, user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

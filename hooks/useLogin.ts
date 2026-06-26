@@ -5,8 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginToAPI } from "@/services/authService";
 import { useAuth } from "@/contexts/authContext";
-import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { clearRecordId } from "@/services/storageService";
 
 // Tipo do formulário
 type FormData = {
@@ -28,7 +27,6 @@ const loginSchema = z.object({
 
 export function useLogin() {
   const { login } = useAuth();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -46,12 +44,8 @@ export function useLogin() {
 
       const { token, user } = await loginToAPI(cleanCpf, data.password);
 
-      await AsyncStorage.removeItem("recordId");
-      await AsyncStorage.removeItem("startTimestamp");
-
-      login(token, user);
-
-      router.push("/welcome");
+      await clearRecordId();
+      await login(token, user);
     } catch (error: any) {
       throw new Error(error.message || "Erro ao fazer login.");
     } finally {

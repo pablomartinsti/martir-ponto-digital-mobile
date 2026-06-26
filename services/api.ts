@@ -1,74 +1,35 @@
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { logEventoApp } from "../utils/logEventoApp"; // 👉 importa aqui
+import { env } from "@/config/env";
+import { getStoredUserData, setLogoutReason, clearStoredUserData } from "@/services/storageService";
 
 const api = axios.create({
-  baseURL: "https://api.martircontabil.com.br",
-  timeout: 10000,
+  baseURL: env.apiUrl,
+  timeout: 15000,
 });
 
-// ✅ Interceptor de resposta para capturar token expirado + enviar logs de erro
+api.interceptors.request.use(
+  async (config) => {
+    const storedUserData = await getStoredUserData();
+
+    if (storedUserData?.token) {
+      config.headers.Authorization = `Bearer ${storedUserData.token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const config = error.config;
-    const route = config?.url || "rota-desconhecida";
-    const method = config?.method?.toUpperCase() || "UNKNOWN";
-
-    // 🚫 Não logar se o erro for da própria tentativa de log
-    if (!route.includes("/log-event") && !route.includes("/event-logs")) {
-      try {
-        const isNetworkError = error.message === "Network Error";
-
-        await logEventoApp({
-          route,
-          method,
-          action: "Erro em requisição",
-          status: isNetworkError ? "network-error" : "api-error",
-          message:
-            error.response?.data?.error || error.message || "Erro desconhecido",
-        });
-      } catch (logError) {
-        console.error("Erro ao tentar enviar log automático:", logError);
-      }
-    } else {
-      console.warn("⛔ Erro na própria rota /event-logs, log ignorado.");
-    }
-
-    // 🔒 Token expirado → Força logout
     if (error.response?.status === 401) {
-      console.warn(
-        "🔒 Token expirado ou inválido. Executando logout automático..."
-      );
-      await AsyncStorage.setItem("logoutReason", "expired");
-      await AsyncStorage.removeItem("userData");
+      await setLogoutReason("expired");
+      await clearStoredUserData();
       router.replace("/login");
     }
 
-    return Promise.reject(error);
-  }
-);
-
-// ✅ Interceptor para adicionar o token nas requisições
-api.interceptors.request.use(
-  async (config) => {
-    try {
-      const storedUserData = await AsyncStorage.getItem("userData");
-      if (storedUserData) {
-        const parsed = JSON.parse(storedUserData);
-        const token = parsed.token;
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      }
-    } catch (error) {
-      console.error("❌ Erro ao recuperar o token:", error);
-    }
-    return config;
-  },
-  (error) => {
-    console.error("Erro ao configurar a requisição:", error);
     return Promise.reject(error);
   }
 );

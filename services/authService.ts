@@ -1,47 +1,48 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "@/services/api";
+import { setStoredUserData } from "@/services/storageService";
+import { AuthUser } from "@/types/auth";
+
+type LoginResponse = {
+  token?: string;
+  user?: AuthUser;
+};
+
+function getApiErrorMessage(error: any) {
+  if (!error.response) {
+    return "Erro ao conectar com o servidor. Verifique sua internet e tente novamente.";
+  }
+
+  const status = error.response.status;
+  const errorMsg = error.response.data?.error || "Erro ao fazer login.";
+
+  if (status === 401) return "Senha inválida. Tente novamente.";
+  if (status === 403) return "Funcionário desativado ou sem permissão. Entre em contato com o administrador.";
+  if (status === 404) return "Funcionário não encontrado. Verifique seu CPF.";
+
+  return errorMsg;
+}
 
 export async function loginToAPI(cpf: string, password: string) {
   try {
-    const response = await api.post("/login", { cpf, password });
+    const response = await api.post<LoginResponse>("/login", { cpf, password });
+    const { token, user } = response.data;
 
-    if (response.data.token && response.data.user) {
-      const { token, user } = response.data;
-
-      if (user.role !== "employee") {
-        throw new Error("Este app é exclusivo para funcionários.");
-      }
-
-      await AsyncStorage.setItem(
-        "userData",
-        JSON.stringify({ token, ...user })
-      );
-
-      return { token, user };
-    } else {
+    if (!token || !user) {
       throw new Error("Credenciais inválidas.");
     }
-  } catch (error: any) {
-    if (error.response) {
-      const status = error.response.status;
-      const errorMsg = error.response.data?.error || "Erro ao fazer login.";
 
-      switch (status) {
-        case 401:
-          throw new Error("Senha inválida. Tente novamente.");
-        case 403:
-          throw new Error(
-            "Funcionário desativado. Entre em contato com o administrador."
-          );
-        case 404:
-          throw new Error("Funcionário não encontrado. Verifique seu CPF.");
-        default:
-          throw new Error(errorMsg);
-      }
+    if (user.role !== "employee") {
+      throw new Error("Este app é exclusivo para funcionários.");
     }
 
-    throw new Error(
-      "Erro ao conectar com o servidor. Tente novamente mais tarde."
-    );
+    await setStoredUserData({ token, ...user });
+
+    return { token, user };
+  } catch (error: any) {
+    if (error.message === "Este app é exclusivo para funcionários." || error.message === "Credenciais inválidas.") {
+      throw error;
+    }
+
+    throw new Error(getApiErrorMessage(error));
   }
 }

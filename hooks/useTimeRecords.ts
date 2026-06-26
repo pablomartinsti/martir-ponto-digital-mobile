@@ -12,8 +12,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
-import api from "@/services/api";
-import { formatDate } from "@/utils/dateUtils";
+import { getTimeRecords } from "@/services/recordPointService";
 
 type Period = "day" | "week" | "month";
 
@@ -71,13 +70,7 @@ export function useTimeRecords(period: Period): UseTimeRecordsResult {
     }
 
     try {
-      const response = await api.get(
-        `/time-records?period=${period}&startDate=${formatDate(
-          startDate
-        )}&endDate=${formatDate(endDate)}`
-      );
-
-      const responseData = response.data;
+      const responseData = await getTimeRecords(period, startDate, endDate);
 
       if (!responseData.records || responseData.records.length === 0) {
         setErrorMessage("Nenhum registro encontrado.");
@@ -93,7 +86,7 @@ export function useTimeRecords(period: Period): UseTimeRecordsResult {
     }
 
     setLoading(false);
-  }, [referenceDate]);
+  }, [referenceDate, period]);
 
   useEffect(() => {
     fetchRecords();
@@ -161,16 +154,4 @@ export function useTimeRecords(period: Period): UseTimeRecordsResult {
     periodLabel,
     canGoNext,
   };
-}
-
-function getUnit(period: Period): "day" | "week" | "month" {
-  if (period === "day") return "day";
-  if (period === "week") return "day";
-  return "month";
-}
-
-function getStep(period: Period): number {
-  if (period === "day") return 1;
-  if (period === "week") return 7;
-  return 1;
 }
