@@ -1,92 +1,105 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { View, TouchableOpacity, Modal, Text, StyleSheet } from "react-native";
-import Icon from "react-native-vector-icons/MaterialIcons";
-import dayjs from "dayjs";
-import "dayjs/locale/pt-br";
+import { View, TouchableOpacity, Modal, Text, StyleSheet, Pressable } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/authContext";
-
-dayjs.locale("pt-br");
 
 const MenuComponent = () => {
   const [modalVisible, setModalVisible] = useState(false);
-
   const { logout } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const handleNavigation = (path: any) => {
     setModalVisible(false);
     setTimeout(() => {
       router.push(path);
-    }, 300);
+    }, 250);
   };
 
   return (
-    <View style={styles.menuContainer}>
-      {/* Botão para abrir o menu */}
+    <View
+      style={[
+        styles.menuContainer,
+        { paddingBottom: Math.max(insets.bottom, 14) },
+      ]}
+    >
       <TouchableOpacity
         style={styles.menuButton}
         onPress={() => setModalVisible(true)}
+        activeOpacity={0.75}
       >
-        <Icon name="menu" size={30} color="#fff" />
+        <MaterialIcons name="menu" size={30} color="#fff" />
+        <Text style={styles.menuLabel}>Menu</Text>
       </TouchableOpacity>
 
-      {/* Botão de logout */}
-      <TouchableOpacity style={styles.menuButton} onPress={logout}>
-        <Icon name="logout" size={30} color="#fff" />
+      <TouchableOpacity
+        style={styles.menuButton}
+        onPress={logout}
+        activeOpacity={0.75}
+      >
+        <MaterialIcons name="logout" size={30} color="#fff" />
+        <Text style={styles.menuLabel}>Sair</Text>
       </TouchableOpacity>
 
-      {/* Modal do Menu */}
       <Modal
-        animationType="slide"
-        transparent={true}
+        animationType="fade"
+        transparent
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+        <Pressable
+          style={styles.modalContainer}
+          onPress={() => setModalVisible(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={() => {}}>
             <Text style={styles.modalTitle}>Relatório de Horas</Text>
 
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => handleNavigation("/recordsPoint")}
+              activeOpacity={0.75}
             >
-              <Icon name="work" size={30} color="#fff" />
+              <MaterialIcons name="work" size={28} color="#fff" />
               <Text style={styles.modalText}>Iniciar jornada</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => handleNavigation("/dayFilter")}
+              activeOpacity={0.75}
             >
-              <Icon name="today" size={30} color="#fff" />
+              <MaterialIcons name="today" size={28} color="#fff" />
               <Text style={styles.modalText}>Dia</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => handleNavigation("/weekFilter")}
+              activeOpacity={0.75}
             >
-              <Icon name="today" size={30} color="#fff" />
+              <MaterialIcons name="date-range" size={28} color="#fff" />
               <Text style={styles.modalText}>Semana</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => handleNavigation("/monthFilter")}
+              activeOpacity={0.75}
             >
-              <Icon name="today" size={30} color="#fff" />
+              <MaterialIcons name="calendar-month" size={28} color="#fff" />
               <Text style={styles.modalText}>Mês</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setModalVisible(false)}
+              activeOpacity={0.75}
             >
-              <Text style={styles.modalText}>Fechar</Text>
+              <Text style={styles.closeButtonText}>Fechar</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -98,59 +111,83 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     width: "100%",
-    paddingVertical: 15,
+    paddingTop: 12,
     paddingHorizontal: 30,
     position: "absolute",
     bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: "#E8B931",
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   menuButton: {
+    minWidth: 72,
     alignItems: "center",
     justifyContent: "center",
   },
-  view: {
-    width: "85%",
+  menuLabel: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
   },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    paddingHorizontal: 20,
   },
   modalContent: {
-    width: "80%",
+    width: "100%",
+    maxWidth: 420,
     backgroundColor: "#011D4C",
     padding: 20,
-    borderRadius: 10,
+    borderRadius: 16,
     alignItems: "center",
   },
   modalTitle: {
-    fontSize: 25,
+    fontSize: 23,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 16,
     color: "#fff",
+    textAlign: "center",
   },
   modalButton: {
     width: "100%",
     flexDirection: "row",
-    gap: 10,
-    padding: 12,
-    marginTop: 10,
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    marginTop: 8,
     alignItems: "center",
     justifyContent: "flex-start",
-    borderRadius: 5,
+    borderRadius: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   closeButton: {
     width: "100%",
-    padding: 12,
+    padding: 14,
     backgroundColor: "#E8B931",
-    marginTop: 30,
+    marginTop: 24,
     alignItems: "center",
-    borderRadius: 5,
+    borderRadius: 10,
   },
   modalText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

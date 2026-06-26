@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text } from "react-native";
-import Icon from "react-native-vector-icons/MaterialIcons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { formatTime, weekDays } from "@/utils/dateUtils";
 import globalStyles from "@/styles/globalStyles";
 import { format, parseISO } from "date-fns";
@@ -32,28 +32,28 @@ export default function PointRecord({ record }: PointRecordProps) {
       <View style={globalStyles.containerTime}>
         <View style={globalStyles.boxTime}>
           <View style={globalStyles.pointTime}>
-            <Icon name="arrow-forward" size={30} color="#00ff15" />
+            <MaterialIcons name="arrow-forward" size={28} color="#00ff15" />
             <Text style={globalStyles.timeText}>
               {formatTime(record.clockIn)}
             </Text>
           </View>
 
           <View style={globalStyles.pointTime}>
-            <Icon name="arrow-back" size={30} color="#ff0000" />
+            <MaterialIcons name="arrow-back" size={28} color="#ff0000" />
             <Text style={globalStyles.timeText}>
               {formatTime(record.lunchStart)}
             </Text>
           </View>
 
           <View style={globalStyles.pointTime}>
-            <Icon name="arrow-forward" size={30} color="#00ff15" />
+            <MaterialIcons name="arrow-forward" size={28} color="#00ff15" />
             <Text style={globalStyles.timeText}>
               {formatTime(record.lunchEnd)}
             </Text>
           </View>
 
           <View style={globalStyles.pointTime}>
-            <Icon name="arrow-back" size={30} color="#ff0000" />
+            <MaterialIcons name="arrow-back" size={28} color="#ff0000" />
             <Text style={globalStyles.timeText}>
               {formatTime(record.clockOut)}
             </Text>

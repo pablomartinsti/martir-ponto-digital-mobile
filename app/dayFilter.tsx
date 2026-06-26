@@ -1,7 +1,8 @@
 import React from "react";
-import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, ActivityIndicator, TouchableOpacity, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
 import MenuComponent from "@/components/Menu";
-import Icon from "react-native-vector-icons/MaterialIcons";
 import globalStyles from "@/styles/globalStyles";
 import { useAuth } from "@/contexts/authContext";
 import PointRecord from "@/components/PointRecord";
@@ -25,49 +26,52 @@ export default function DayFilter() {
   } = useTimeRecords("day");
 
   return (
-    <View style={globalStyles.container}>
+    <SafeAreaView style={globalStyles.container} edges={["top", "left", "right"]}>
       <Text style={globalStyles.title}>Olá, {userName}</Text>
 
-      {/* Navegação */}
       <View style={globalStyles.containerFilter}>
-        <TouchableOpacity onPress={goToPrev}>
-          <Icon name="chevron-left" size={30} color="#fff" />
+        <TouchableOpacity onPress={goToPrev} disabled={loading} activeOpacity={0.75}>
+          <MaterialIcons
+            name="chevron-left"
+            size={42}
+            color={loading ? "#888" : "#fff"}
+          />
         </TouchableOpacity>
 
         <Text style={globalStyles.textFilter}>{periodLabel}</Text>
 
-        <TouchableOpacity onPress={goToNext} disabled={!canGoNext}>
-          <Icon
+        <TouchableOpacity
+          onPress={goToNext}
+          disabled={!canGoNext || loading}
+          activeOpacity={0.75}
+        >
+          <MaterialIcons
             name="chevron-right"
-            size={30}
-            color={canGoNext ? "#fff" : "#777"}
+            size={42}
+            color={!canGoNext || loading ? "#777" : "#fff"}
           />
         </TouchableOpacity>
       </View>
 
       <View style={globalStyles.border} />
 
-      <View style={globalStyles.content}>
+      <ScrollView
+        style={globalStyles.content}
+        contentContainerStyle={globalStyles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {loading ? (
           <ActivityIndicator size="large" color="#fff" />
         ) : errorMessage ? (
           <Text style={globalStyles.errorText}>{errorMessage}</Text>
-        ) : data && data.records && data.records.length > 0 ? (
-          data.records[0].clockIn ? (
-            <PointRecord record={data.records[0]} />
-          ) : (
-            <Text style={globalStyles.errorText}>
-              Nenhum registro encontrado.
-            </Text>
-          )
+        ) : data?.records?.[0]?.clockIn ? (
+          <PointRecord record={data.records[0]} />
         ) : (
-          <Text style={globalStyles.errorText}>
-            Nenhum registro encontrado.
-          </Text>
+          <Text style={globalStyles.errorText}>Nenhum registro encontrado.</Text>
         )}
-      </View>
+      </ScrollView>
 
       <MenuComponent />
-    </View>
+    </SafeAreaView>
   );
 }

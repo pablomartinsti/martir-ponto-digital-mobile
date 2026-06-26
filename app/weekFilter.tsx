@@ -1,13 +1,8 @@
 import React from "react";
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
+import { View, Text, ActivityIndicator, TouchableOpacity, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
 import MenuComponent from "@/components/Menu";
-import Icon from "react-native-vector-icons/MaterialIcons";
 import globalStyles from "@/styles/globalStyles";
 import { useAuth } from "@/contexts/authContext";
 import PointRecord from "@/components/PointRecord";
@@ -31,25 +26,28 @@ export default function WeekFilter() {
   } = useTimeRecords("week");
 
   return (
-    <View style={globalStyles.container}>
+    <SafeAreaView style={globalStyles.container} edges={["top", "left", "right"]}>
       <Text style={globalStyles.title}>Olá, {userName}</Text>
 
-      {/* Navegação da semana */}
       <View style={globalStyles.containerFilter}>
-        <TouchableOpacity onPress={goToPrev} disabled={loading}>
-          <Icon
+        <TouchableOpacity onPress={goToPrev} disabled={loading} activeOpacity={0.75}>
+          <MaterialIcons
             name="chevron-left"
-            size={50}
+            size={42}
             color={loading ? "#888" : "#fff"}
           />
         </TouchableOpacity>
 
         <Text style={globalStyles.textFilter}>{periodLabel}</Text>
 
-        <TouchableOpacity onPress={goToNext} disabled={!canGoNext || loading}>
-          <Icon
+        <TouchableOpacity
+          onPress={goToNext}
+          disabled={!canGoNext || loading}
+          activeOpacity={0.75}
+        >
+          <MaterialIcons
             name="chevron-right"
-            size={50}
+            size={42}
             color={!canGoNext || loading ? "#888" : "#fff"}
           />
         </TouchableOpacity>
@@ -58,15 +56,11 @@ export default function WeekFilter() {
       <View style={globalStyles.containerBankHours}>
         <View style={globalStyles.boxBankHours}>
           <Text style={globalStyles.bankHoursText}>Horas</Text>
-          <Text style={globalStyles.bankHoursValue}>
-            +{data?.totalPositiveHours || "00h 00m"}
-          </Text>
+          <Text style={globalStyles.bankHoursValue}>+{data?.totalPositiveHours || "00h 00m"}</Text>
         </View>
         <View style={globalStyles.boxBankHours}>
           <Text style={globalStyles.bankHoursText}>Horas</Text>
-          <Text style={globalStyles.bankHoursValue}>
-            -{data?.totalNegativeHours || "00h 00m"}
-          </Text>
+          <Text style={globalStyles.bankHoursValue}>-{data?.totalNegativeHours || "00h 00m"}</Text>
         </View>
         <View style={globalStyles.boxBankHours}>
           <Text style={globalStyles.bankHoursText}>Saldo</Text>
@@ -84,23 +78,26 @@ export default function WeekFilter() {
       </View>
 
       <View style={globalStyles.border} />
-      <ScrollView style={globalStyles.content}>
+
+      <ScrollView
+        style={globalStyles.content}
+        contentContainerStyle={globalStyles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {loading ? (
           <ActivityIndicator size="large" color="#fff" />
         ) : errorMessage ? (
           <Text style={globalStyles.errorText}>{errorMessage}</Text>
         ) : data?.records?.length > 0 ? (
           data.records.map((record: any) => (
-            <PointRecord key={record.date} record={record} />
+            <PointRecord key={record.date || record._id} record={record} />
           ))
         ) : (
-          <Text style={globalStyles.errorText}>
-            Nenhum registro encontrado.
-          </Text>
+          <Text style={globalStyles.errorText}>Nenhum registro encontrado.</Text>
         )}
       </ScrollView>
 
       <MenuComponent />
-    </View>
+    </SafeAreaView>
   );
 }
