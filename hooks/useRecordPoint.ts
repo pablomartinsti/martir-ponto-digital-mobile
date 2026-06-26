@@ -89,7 +89,9 @@ export function useRecordPoint() {
       if (!token) return;
 
       const response = await getTodayRecord(token);
-      const records = response.data.records;
+      const records = Array.isArray(response.data?.records)
+        ? response.data.records
+        : [];
       if (records.length > 0) {
         await AsyncStorage.setItem("recordId", records[0]._id);
         updateStatusAndTimer(records[0]);

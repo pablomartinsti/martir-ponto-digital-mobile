@@ -1,3 +1,4 @@
+import React from "react";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -10,8 +11,8 @@ export default function Index() {
   useEffect(() => {
     const checkAuthentication = async () => {
       try {
-        const token = await AsyncStorage.getItem("token");
-        if (token) {
+        const storedUserData = await AsyncStorage.getItem("userData");
+        if (storedUserData) {
           router.replace("/recordsPoint"); // Nome corrigido
         } else {
           router.replace("/login");

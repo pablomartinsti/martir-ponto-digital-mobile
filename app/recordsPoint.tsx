@@ -147,7 +147,9 @@ export default function RecordPoint() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const records = response.data.records;
+      const records = Array.isArray(response.data?.records)
+        ? response.data.records
+        : [];
       if (records.length > 0) {
         await updateStatusAndTimer(records[0]);
       } else {

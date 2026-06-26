@@ -5,7 +5,7 @@ import { logEventoApp } from "../utils/logEventoApp"; // 👉 importa aqui
 
 const api = axios.create({
   baseURL: "https://api.martircontabil.com.br",
-  timeout: 2000,
+  timeout: 10000,
 });
 
 // ✅ Interceptor de resposta para capturar token expirado + enviar logs de erro
@@ -17,7 +17,7 @@ api.interceptors.response.use(
     const method = config?.method?.toUpperCase() || "UNKNOWN";
 
     // 🚫 Não logar se o erro for da própria tentativa de log
-    if (!route.includes("/event-logs")) {
+    if (!route.includes("/log-event") && !route.includes("/event-logs")) {
       try {
         const isNetworkError = error.message === "Network Error";
 
