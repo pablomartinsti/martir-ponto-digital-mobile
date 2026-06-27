@@ -44,7 +44,8 @@
           "locationWhenInUsePermission": "Permitir o uso da localização enquanto o app está em uso."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
