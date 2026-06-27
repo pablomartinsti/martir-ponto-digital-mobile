@@ -34,7 +34,7 @@ const globalStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 370,
     gap: 8,
     marginTop: 4,
     marginBottom: 8
@@ -69,7 +69,7 @@ const globalStyles = StyleSheet.create({
   content: {
     flex: 1,
     width: '100%',
-    maxWidth: 520
+    maxWidth: 370
   },
   scrollContent: {
     paddingBottom: 18

@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { useFocusEffect } from "expo-router";
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   AppState,
   View,
@@ -8,17 +8,17 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  useWindowDimensions,
-} from "react-native";
-import * as Location from "expo-location";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { formatInTimeZone } from "date-fns-tz";
-import api from "@/services/api";
-import Button from "@/components/Button";
-import MenuComponent from "@/components/Menu";
-import globalStyles from "@/styles/globalStyles";
-import { useAuth } from "@/contexts/authContext";
+  useWindowDimensions
+} from 'react-native';
+import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { formatInTimeZone } from 'date-fns-tz';
+import api from '@/services/api';
+import Button from '@/components/Button';
+import MenuComponent from '@/components/Menu';
+import globalStyles from '@/styles/globalStyles';
+import { useAuth } from '@/contexts/authContext';
 
 type WorkStatus = {
   clockIn: boolean;
@@ -36,10 +36,10 @@ const INITIAL_STATUS: WorkStatus = {
   clockIn: false,
   lunchStart: false,
   lunchEnd: false,
-  clockOut: false,
+  clockOut: false
 };
 
-const TIME_ZONE = "America/Sao_Paulo";
+const TIME_ZONE = 'America/Sao_Paulo';
 
 export default function RecordPoint() {
   const { user, token, loading } = useAuth();
@@ -48,31 +48,30 @@ export default function RecordPoint() {
   const clockSize = Math.min(width * (isSmallScreen ? 0.58 : 0.7), 300);
 
   const userName = user?.name
-    ? user.name.split(" ")[0].charAt(0).toUpperCase() +
-      user.name.split(" ")[0].slice(1)
-    : "Usuário";
+    ? user.name.split(' ')[0].charAt(0).toUpperCase() + user.name.split(' ')[0].slice(1)
+    : 'Usuário';
 
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
-  const [currentDate, setCurrentDate] = useState("");
-  const [currentTime, setCurrentTime] = useState("");
+  const [currentDate, setCurrentDate] = useState('');
+  const [currentTime, setCurrentTime] = useState('');
   const [elapsedTime, setElapsedTime] = useState(0);
   const [timerPaused, setTimerPaused] = useState(true);
   const [status, setStatus] = useState<WorkStatus>(INITIAL_STATUS);
 
   const resetWorkStatus = useCallback(async () => {
-    await AsyncStorage.removeItem("recordId");
+    await AsyncStorage.removeItem('recordId');
     setElapsedTime(0);
     setTimerPaused(true);
     setStatus(INITIAL_STATUS);
   }, []);
 
   const getAuthData = async () => {
-    const storedUserData = await AsyncStorage.getItem("userData");
+    const storedUserData = await AsyncStorage.getItem('userData');
     const parsed = storedUserData ? JSON.parse(storedUserData) : null;
     const token = parsed?.token;
     const employeeId = parsed?.id;
-    const recordId = await AsyncStorage.getItem("recordId");
+    const recordId = await AsyncStorage.getItem('recordId');
 
     return { token, employeeId, recordId };
   };
@@ -85,7 +84,7 @@ export default function RecordPoint() {
       }
 
       if (record._id) {
-        await AsyncStorage.setItem("recordId", record._id);
+        await AsyncStorage.setItem('recordId', record._id);
       }
 
       const { clockIn, lunchStart, lunchEnd, clockOut } = record;
@@ -94,13 +93,13 @@ export default function RecordPoint() {
         clockIn: !!clockIn,
         lunchStart: !!lunchStart,
         lunchEnd: !!lunchEnd,
-        clockOut: !!clockOut,
+        clockOut: !!clockOut
       });
 
       if (clockOut) {
         setElapsedTime(0);
         setTimerPaused(true);
-        await AsyncStorage.removeItem("recordId");
+        await AsyncStorage.removeItem('recordId');
         return;
       }
 
@@ -115,8 +114,7 @@ export default function RecordPoint() {
       }
 
       if (clockIn && lunchStart && lunchEnd) {
-        const breakTime =
-          new Date(lunchEnd).getTime() - new Date(lunchStart).getTime();
+        const breakTime = new Date(lunchEnd).getTime() - new Date(lunchStart).getTime();
         const worked = now - start - breakTime;
         setElapsedTime(Math.max(0, Math.floor(worked / 1000)));
         setTimerPaused(false);
@@ -140,16 +138,11 @@ export default function RecordPoint() {
       const { token } = await getAuthData();
       if (!token) return;
 
-      const todayBrasilia = formatInTimeZone(
-        new Date(),
-        TIME_ZONE,
-        "yyyy-MM-dd"
-      );
+      const todayBrasilia = formatInTimeZone(new Date(), TIME_ZONE, 'yyyy-MM-dd');
 
-      const response = await api.get(
-        `/time-records?period=day&startDate=${todayBrasilia}&endDate=${todayBrasilia}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.get(`/time-records?period=day&startDate=${todayBrasilia}&endDate=${todayBrasilia}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       const records = response.data?.records || [];
 
@@ -160,7 +153,7 @@ export default function RecordPoint() {
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
-        Alert.alert("Sessão expirada", "Faça login novamente.");
+        Alert.alert('Sessão expirada', 'Faça login novamente.');
         return;
       }
 
@@ -170,7 +163,7 @@ export default function RecordPoint() {
       }
 
       const msg = error.response?.data?.message || error.response?.data?.error;
-      Alert.alert("Erro ao carregar ponto", msg || "Não foi possível consultar sua jornada.");
+      Alert.alert('Erro ao carregar ponto', msg || 'Não foi possível consultar sua jornada.');
     }
   }, [resetWorkStatus, updateStatusAndTimer]);
 
@@ -178,20 +171,20 @@ export default function RecordPoint() {
     const updateDateTime = () => {
       const now = new Date();
       const optionsDate = {
-        weekday: "short",
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        timeZone: TIME_ZONE,
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: TIME_ZONE
       } as const;
 
-      setCurrentDate(now.toLocaleDateString("pt-BR", optionsDate));
+      setCurrentDate(now.toLocaleDateString('pt-BR', optionsDate));
       setCurrentTime(
-        now.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          timeZone: TIME_ZONE,
+        now.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: TIME_ZONE
         })
       );
     };
@@ -203,8 +196,8 @@ export default function RecordPoint() {
   }, []);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active") {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
         fetchWorkStatus();
       }
     });
@@ -239,77 +232,63 @@ export default function RecordPoint() {
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
 
-    return `${hrs.toString().padStart(2, "0")}:${mins
-      .toString()
-      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const getPointErrorMessage = (message?: string): AlertMessage => {
-    const normalized = message?.toLowerCase() ?? "";
+    const normalized = message?.toLowerCase() ?? '';
 
-    if (
-      normalized.includes("já") ||
-      normalized.includes("already") ||
-      normalized.includes("registrado")
-    ) {
+    if (normalized.includes('já') || normalized.includes('already') || normalized.includes('registrado')) {
       return {
-        title: "Ponto já registrado",
-        description: message || "Esse ponto já foi registrado hoje.",
+        title: 'Ponto já registrado',
+        description: message || 'Esse ponto já foi registrado hoje.'
       };
     }
 
     if (
-      normalized.includes("localização") ||
-      normalized.includes("localizacao") ||
-      normalized.includes("distância") ||
-      normalized.includes("distancia") ||
-      normalized.includes("fora")
+      normalized.includes('localização') ||
+      normalized.includes('localizacao') ||
+      normalized.includes('distância') ||
+      normalized.includes('distancia') ||
+      normalized.includes('fora')
     ) {
       return {
-        title: "Localização não autorizada",
-        description:
-          message ||
-          "Você precisa estar dentro da área autorizada da empresa para registrar o ponto.",
+        title: 'Localização não autorizada',
+        description: message || 'Você precisa estar dentro da área autorizada da empresa para registrar o ponto.'
       };
     }
 
-    if (normalized.includes("almoço") || normalized.includes("almoco")) {
+    if (normalized.includes('almoço') || normalized.includes('almoco')) {
       return {
-        title: "Atenção ao intervalo",
-        description: message || "Verifique as regras do intervalo de almoço.",
+        title: 'Atenção ao intervalo',
+        description: message || 'Verifique as regras do intervalo de almoço.'
       };
     }
 
-    if (normalized.includes("recordid") || normalized.includes("registro")) {
+    if (normalized.includes('recordid') || normalized.includes('registro')) {
       return {
-        title: "Jornada não encontrada",
-        description:
-          "Não localizei uma jornada aberta. Atualize a tela e tente novamente.",
+        title: 'Jornada não encontrada',
+        description: 'Não localizei uma jornada aberta. Atualize a tela e tente novamente.'
       };
     }
 
     return {
-      title: "Não foi possível registrar",
-      description: message || "Tente novamente em alguns instantes.",
+      title: 'Não foi possível registrar',
+      description: message || 'Tente novamente em alguns instantes.'
     };
   };
 
-  const handlePost = async (
-    endpoint: string,
-    body: object,
-    successMsg: string
-  ) => {
+  const handlePost = async (endpoint: string, body: object, successMsg: string) => {
     try {
       setIsPosting(true);
       const response = await api.post(endpoint, body);
 
       if (response.status === 200 || response.status === 201) {
         await fetchWorkStatus();
-        Alert.alert("Registro realizado", successMsg);
+        Alert.alert('Registro realizado', successMsg);
       }
     } catch (error: any) {
-      const apiMessage =
-        error.response?.data?.message || error.response?.data?.error;
+      const apiMessage = error.response?.data?.message || error.response?.data?.error;
       const alertData = getPointErrorMessage(apiMessage);
 
       Alert.alert(alertData.title, alertData.description);
@@ -325,26 +304,20 @@ export default function RecordPoint() {
 
       const { status } = await Location.requestForegroundPermissionsAsync();
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permissão necessária",
-          "Permita o acesso à localização para registrar o ponto."
-        );
-        throw new Error("Permissão de localização negada.");
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Permita o acesso à localização para registrar o ponto.');
+        throw new Error('Permissão de localização negada.');
       }
 
       const isEnabled = await Location.hasServicesEnabledAsync();
 
       if (!isEnabled) {
-        Alert.alert(
-          "GPS desativado",
-          "Ative a localização do celular e tente bater o ponto novamente."
-        );
-        throw new Error("O serviço de localização está desativado.");
+        Alert.alert('GPS desativado', 'Ative a localização do celular e tente bater o ponto novamente.');
+        throw new Error('O serviço de localização está desativado.');
       }
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
+        accuracy: Location.Accuracy.High
       });
 
       const { latitude, longitude } = location.coords;
@@ -359,96 +332,71 @@ export default function RecordPoint() {
     const { token, employeeId } = await getAuthData();
 
     if (!token || !employeeId) {
-      Alert.alert("Sessão inválida", "Faça login novamente para registrar o ponto.");
+      Alert.alert('Sessão inválida', 'Faça login novamente para registrar o ponto.');
       return;
     }
 
     const coords = await getCurrentLocation();
 
-    await handlePost(
-      "/clock-in",
-      { employeeId, ...coords },
-      "Entrada registrada com sucesso."
-    );
+    await handlePost('/clock-in', { employeeId, ...coords }, 'Entrada registrada com sucesso.');
   };
 
   const startLunch = async () => {
     const { token, recordId } = await getAuthData();
 
     if (!token || !recordId) {
-      Alert.alert(
-        "Jornada não encontrada",
-        "Não localizei uma jornada aberta. Atualize a tela e tente novamente."
-      );
+      Alert.alert('Jornada não encontrada', 'Não localizei uma jornada aberta. Atualize a tela e tente novamente.');
       await fetchWorkStatus();
       return;
     }
 
     const coords = await getCurrentLocation();
 
-    await handlePost(
-      "/lunch-start",
-      { recordId, ...coords },
-      "Saída para almoço registrada com sucesso."
-    );
+    await handlePost('/lunch-start', { recordId, ...coords }, 'Saída para almoço registrada com sucesso.');
   };
 
   const returnFromLunch = async () => {
     const { token, recordId } = await getAuthData();
 
     if (!token || !recordId) {
-      Alert.alert(
-        "Jornada não encontrada",
-        "Não localizei uma jornada aberta. Atualize a tela e tente novamente."
-      );
+      Alert.alert('Jornada não encontrada', 'Não localizei uma jornada aberta. Atualize a tela e tente novamente.');
       await fetchWorkStatus();
       return;
     }
 
     const coords = await getCurrentLocation();
 
-    await handlePost(
-      "/lunch-end",
-      { recordId, ...coords },
-      "Retorno do almoço registrado com sucesso."
-    );
+    await handlePost('/lunch-end', { recordId, ...coords }, 'Retorno do almoço registrado com sucesso.');
   };
 
   const finishWorkDay = async () => {
     const { token, recordId } = await getAuthData();
 
     if (!token || !recordId) {
-      Alert.alert(
-        "Jornada não encontrada",
-        "Não localizei uma jornada aberta. Atualize a tela e tente novamente."
-      );
+      Alert.alert('Jornada não encontrada', 'Não localizei uma jornada aberta. Atualize a tela e tente novamente.');
       await fetchWorkStatus();
       return;
     }
 
     const coords = await getCurrentLocation();
 
-    await handlePost(
-      "/clock-out",
-      { recordId, ...coords },
-      "Jornada finalizada com sucesso."
-    );
+    await handlePost('/clock-out', { recordId, ...coords }, 'Jornada finalizada com sucesso.');
   };
 
   const getCurrentAction = () => {
     if (!status.clockIn || status.clockOut) {
-      return { title: "Iniciar Jornada", onPress: startWorkDay };
+      return { title: 'Iniciar Jornada', onPress: startWorkDay };
     }
 
     if (!status.lunchStart) {
-      return { title: "Saída Almoço", onPress: startLunch };
+      return { title: 'Saída Almoço', onPress: startLunch };
     }
 
     if (!status.lunchEnd) {
-      return { title: "Retorno Almoço", onPress: returnFromLunch };
+      return { title: 'Retorno Almoço', onPress: returnFromLunch };
     }
 
-    return { title: "Finalizar Jornada", onPress: finishWorkDay };
+    return { title: 'Finalizar Jornada', onPress: finishWorkDay };
   };
 
   const currentAction = getCurrentAction();
@@ -464,11 +412,8 @@ export default function RecordPoint() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Olá, {userName}!</Text>
 
         <View style={styles.boxDate}>
@@ -485,27 +430,23 @@ export default function RecordPoint() {
               width: clockSize,
               height: clockSize,
               borderRadius: clockSize / 2,
-              marginVertical: isSmallScreen ? 22 : 34,
-            },
+              marginVertical: isSmallScreen ? 22 : 34
+            }
           ]}
         >
-          <Text style={[styles.clockText, { fontSize: width < 360 ? 30 : 36 }]}>
-            {formatTime(elapsedTime)}
-          </Text>
+          <Text style={[styles.clockText, { fontSize: width < 360 ? 30 : 36 }]}>{formatTime(elapsedTime)}</Text>
         </View>
 
         <View style={styles.boxButton}>
           <Button
-            title={actionLoading ? "Aguarde..." : currentAction.title}
+            title={actionLoading ? 'Aguarde...' : currentAction.title}
             onPress={currentAction.onPress}
             disabled={actionLoading}
             loading={actionLoading}
           />
         </View>
 
-        {actionLoading && (
-          <Text style={styles.helperText}>Obtendo localização e validando ponto...</Text>
-        )}
+        {actionLoading && <Text style={styles.helperText}>Obtendo localização e validando ponto...</Text>}
       </ScrollView>
 
       <MenuComponent />
@@ -516,66 +457,64 @@ export default function RecordPoint() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#011D4C",
+    backgroundColor: '#011D4C'
   },
   loadingContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#011D4C",
-    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#011D4C'
   },
   loadingText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 18,
     marginTop: 20,
-    textAlign: "center",
+    textAlign: 'center'
   },
   content: {
     flexGrow: 1,
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 118,
+    alignItems: 'center',
+    paddingBottom: 118
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginTop: 16,
-    textAlign: "center",
+    textAlign: 'center'
   },
   boxDate: {
-    width: "100%",
-    flexDirection: "column",
-    gap: 6,
+    width: '100%',
+    flexDirection: 'row',
+    gap: 20,
     marginTop: 26,
-    alignItems: "center",
+    justifyContent: 'space-around'
   },
   dateText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 18,
-    textAlign: "center",
+    textAlign: 'center'
   },
   boxClock: {
     borderWidth: 3,
-    borderColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#011D4C",
+    borderColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#011D4C'
   },
   clockText: {
-    color: "#fff",
-    fontWeight: "bold",
+    color: '#fff',
+    fontWeight: 'bold'
   },
   boxButton: {
-    width: "100%",
-    maxWidth: 420,
+    width: '80%',
+    maxWidth: 420
   },
   helperText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 14,
-    textAlign: "center",
+    textAlign: 'center',
     marginTop: 12,
-    opacity: 0.85,
-  },
+    opacity: 0.85
+  }
 });
