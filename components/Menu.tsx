@@ -1,9 +1,9 @@
-import { router } from "expo-router";
-import React, { useState } from "react";
-import { View, TouchableOpacity, Modal, Text, StyleSheet, Pressable } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "@/contexts/authContext";
+import { router } from 'expo-router';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, Modal, Text, StyleSheet, Pressable } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/contexts/authContext';
 
 const MenuComponent = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -18,46 +18,25 @@ const MenuComponent = () => {
   };
 
   return (
-    <View
-      style={[
-        styles.menuContainer,
-        { paddingBottom: Math.max(insets.bottom, 14) },
-      ]}
-    >
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={() => setModalVisible(true)}
-        activeOpacity={0.75}
-      >
+    <View style={[styles.menuContainer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+      <TouchableOpacity style={styles.menuButton} onPress={() => setModalVisible(true)} activeOpacity={0.75}>
         <MaterialIcons name="menu" size={30} color="#fff" />
         <Text style={styles.menuLabel}>Menu</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={logout}
-        activeOpacity={0.75}
-      >
+      <TouchableOpacity style={styles.menuButton} onPress={logout} activeOpacity={0.75}>
         <MaterialIcons name="logout" size={30} color="#fff" />
         <Text style={styles.menuLabel}>Sair</Text>
       </TouchableOpacity>
 
-      <Modal
-        animationType="fade"
-        transparent
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalContainer}
-          onPress={() => setModalVisible(false)}
-        >
+      <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+        <Pressable style={styles.modalContainer} onPress={() => setModalVisible(false)}>
           <Pressable style={styles.modalContent} onPress={() => {}}>
             <Text style={styles.modalTitle}>Relatório de Horas</Text>
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => handleNavigation("/recordsPoint")}
+              onPress={() => handleNavigation('/recordsPoint')}
               activeOpacity={0.75}
             >
               <MaterialIcons name="work" size={28} color="#fff" />
@@ -66,7 +45,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => handleNavigation("/dayFilter")}
+              onPress={() => handleNavigation('/dayFilter')}
               activeOpacity={0.75}
             >
               <MaterialIcons name="today" size={28} color="#fff" />
@@ -75,7 +54,7 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => handleNavigation("/weekFilter")}
+              onPress={() => handleNavigation('/weekFilter')}
               activeOpacity={0.75}
             >
               <MaterialIcons name="date-range" size={28} color="#fff" />
@@ -84,18 +63,14 @@ const MenuComponent = () => {
 
             <TouchableOpacity
               style={styles.modalButton}
-              onPress={() => handleNavigation("/monthFilter")}
+              onPress={() => handleNavigation('/monthFilter')}
               activeOpacity={0.75}
             >
               <MaterialIcons name="calendar-month" size={28} color="#fff" />
               <Text style={styles.modalText}>Mês</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setModalVisible(false)}
-              activeOpacity={0.75}
-            >
+            <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)} activeOpacity={0.75}>
               <Text style={styles.closeButtonText}>Fechar</Text>
             </TouchableOpacity>
           </Pressable>
@@ -107,88 +82,88 @@ const MenuComponent = () => {
 
 const styles = StyleSheet.create({
   menuContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "100%",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
     paddingTop: 12,
     paddingHorizontal: 30,
-    position: "absolute",
+    position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#E8B931",
+    backgroundColor: '#E8B931',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     elevation: 8,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowRadius: 6
   },
   menuButton: {
     minWidth: 72,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   menuLabel: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 12,
-    fontWeight: "700",
-    marginTop: 2,
+    fontWeight: '700',
+    marginTop: 2
   },
   modalContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    paddingHorizontal: 20
   },
   modalContent: {
-    width: "100%",
+    width: '100%',
     maxWidth: 420,
-    backgroundColor: "#011D4C",
+    backgroundColor: '#011D4C',
     padding: 20,
     borderRadius: 16,
-    alignItems: "center",
+    alignItems: 'center'
   },
   modalTitle: {
     fontSize: 23,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 16,
-    color: "#fff",
-    textAlign: "center",
+    color: '#fff',
+    textAlign: 'center'
   },
   modalButton: {
-    width: "100%",
-    flexDirection: "row",
+    width: '100%',
+    flexDirection: 'row',
     gap: 12,
     paddingVertical: 14,
     paddingHorizontal: 12,
     marginTop: 8,
-    alignItems: "center",
-    justifyContent: "flex-start",
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     borderRadius: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: 'rgba(255, 255, 255, 0.08)'
   },
   closeButton: {
-    width: "100%",
+    width: '100%',
     padding: 14,
-    backgroundColor: "#E8B931",
+    backgroundColor: '#E8B931',
     marginTop: 24,
-    alignItems: "center",
-    borderRadius: 10,
+    alignItems: 'center',
+    borderRadius: 10
   },
   modalText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600'
   },
   closeButtonText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
-    fontWeight: "bold",
-  },
+    fontWeight: 'bold'
+  }
 });
 
 export default MenuComponent;

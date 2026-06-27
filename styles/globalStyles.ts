@@ -1,152 +1,151 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet } from 'react-native';
 
 const globalStyles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    backgroundColor: "#011D4C",
+    alignItems: 'center',
+    backgroundColor: '#011D4C',
     paddingTop: 16,
-    paddingBottom: 112,
-    paddingHorizontal: 16,
+    paddingBottom: 112
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: 8,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8
   },
   containerFilter: {
-    width: "100%",
+    width: '100%',
     maxWidth: 480,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 10,
-    gap: 8,
+    gap: 8
   },
   textFilter: {
     flex: 1,
-    color: "#fff",
+    color: '#fff',
     fontSize: 17,
-    textAlign: "center",
+    textAlign: 'center'
   },
   containerBankHours: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
     maxWidth: 480,
     gap: 8,
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 8
   },
   boxBankHours: {
     flex: 1,
-    alignItems: "center",
+    alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: 'rgba(255, 255, 255, 0.08)'
   },
   bankHoursText: {
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 4,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4
   },
   bankHoursValue: {
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center'
   },
   border: {
-    width: "100%",
-    borderBottomColor: "rgba(255, 255, 255, 0.65)",
+    width: '100%',
+    borderBottomColor: 'rgba(255, 255, 255, 0.65)',
     borderBottomWidth: 1,
     marginTop: 14,
-    marginBottom: 14,
+    marginBottom: 14
   },
   content: {
     flex: 1,
-    width: "100%",
-    maxWidth: 520,
+    width: '100%',
+    maxWidth: 520
   },
   scrollContent: {
-    paddingBottom: 18,
+    paddingBottom: 18
   },
   containerReport: {
     borderWidth: 1,
     borderRadius: 10,
     padding: 12,
-    borderColor: "rgba(255, 255, 255, 0.7)",
+    borderColor: 'rgba(255, 255, 255, 0.7)',
     marginBottom: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: 'rgba(255, 255, 255, 0.04)'
   },
   weekDay: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 5,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 5
   },
   containerTime: {
-    flexDirection: "column",
-    justifyContent: "space-around",
-    marginTop: 5,
+    flexDirection: 'column',
+    justifyContent: 'space-around',
+    marginTop: 5
   },
   boxTime: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: 5,
-    gap: 8,
+    gap: 8
   },
   pointTime: {
     flex: 1,
-    alignItems: "center",
+    alignItems: 'center'
   },
   timeText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 15,
-    textAlign: "center",
+    textAlign: 'center'
   },
   containerWorked: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingTop: 18,
-    width: "100%",
-    gap: 10,
+    width: '100%',
+    gap: 10
   },
   boxWorked: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "flex-start",
+    justifyContent: 'center',
+    alignItems: 'flex-start'
   },
   workedText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 15,
-    fontWeight: "bold",
+    fontWeight: 'bold'
   },
   workedValue: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 15,
-    fontWeight: "bold",
+    fontWeight: 'bold'
   },
   errorText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 17,
-    textAlign: "center",
+    textAlign: 'center',
     marginTop: 20,
-    lineHeight: 24,
+    lineHeight: 24
   },
   positive: {
-    color: "#00ff15",
+    color: '#00ff15'
   },
   negative: {
-    color: "#ff4d4d",
+    color: '#ff4d4d'
   },
   view: {
-    gap: 20,
-  },
+    gap: 20
+  }
 });
 
 export default globalStyles;
