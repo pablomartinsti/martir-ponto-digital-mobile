@@ -108,6 +108,17 @@ const globalStyles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center'
   },
+  boxWorkedLeft: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'flex-start'
+  },
+
+  boxWorkedRight: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'flex-end'
+  },
   containerWorked: {
     flexDirection: 'row',
     justifyContent: 'space-between',

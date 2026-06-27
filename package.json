@@ -19,6 +19,7 @@
     "@hookform/resolvers": "^3.9.1",
     "@npmcli/fs": "^5.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native/dev-middleware": "^0.86.0",
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
