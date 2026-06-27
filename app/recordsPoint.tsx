@@ -238,10 +238,22 @@ export default function RecordPoint() {
   const getPointErrorMessage = (message?: string): AlertMessage => {
     const normalized = message?.toLowerCase() ?? '';
 
-    if (normalized.includes('já') || normalized.includes('already') || normalized.includes('registrado')) {
+    if (
+      normalized.includes('jornada ja iniciada') ||
+      normalized.includes('jornada já iniciada') ||
+      normalized.includes('todos os registros') ||
+      normalized.includes('already')
+    ) {
+      return {
+        title: 'Jornada concluída',
+        description: 'Todos os registros de ponto de hoje já foram realizados.'
+      };
+    }
+
+    if (normalized.includes('registrado')) {
       return {
         title: 'Ponto já registrado',
-        description: message || 'Esse ponto já foi registrado hoje.'
+        description: message || 'Esse ponto já foi registrado.'
       };
     }
 
