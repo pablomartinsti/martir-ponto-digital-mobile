@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Modal, Text, StyleSheet, Pressable } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/authContext';
 
@@ -20,12 +20,26 @@ const MenuComponent = () => {
   return (
     <View style={[styles.menuContainer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
       <TouchableOpacity style={styles.menuButton} onPress={() => setModalVisible(true)} activeOpacity={0.75}>
-        <MaterialIcons name="menu" size={30} color="#fff" />
+        <Image
+          source={require('@/assets/icons/menu.png')}
+          style={{
+            width: 30,
+            height: 30,
+            tintColor: '#fff'
+          }}
+        />
         <Text style={styles.menuLabel}>Menu</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.menuButton} onPress={logout} activeOpacity={0.75}>
-        <MaterialIcons name="logout" size={30} color="#fff" />
+        <Image
+          source={require('@/assets/icons/logout.png')}
+          style={{
+            width: 30,
+            height: 30,
+            tintColor: '#fff'
+          }}
+        />
         <Text style={styles.menuLabel}>Sair</Text>
       </TouchableOpacity>
 
@@ -39,7 +53,14 @@ const MenuComponent = () => {
               onPress={() => handleNavigation('/recordsPoint')}
               activeOpacity={0.75}
             >
-              <MaterialIcons name="work" size={28} color="#fff" />
+              <Image
+                source={require('@/assets/icons/work.png')}
+                style={{
+                  width: 28,
+                  height: 28,
+                  tintColor: '#fff'
+                }}
+              />
               <Text style={styles.modalText}>Iniciar jornada</Text>
             </TouchableOpacity>
 
@@ -48,7 +69,14 @@ const MenuComponent = () => {
               onPress={() => handleNavigation('/dayFilter')}
               activeOpacity={0.75}
             >
-              <MaterialIcons name="today" size={28} color="#fff" />
+              <Image
+                source={require('@/assets/icons/today.png')}
+                style={{
+                  width: 28,
+                  height: 28,
+                  tintColor: '#fff'
+                }}
+              />
               <Text style={styles.modalText}>Dia</Text>
             </TouchableOpacity>
 
@@ -57,7 +85,14 @@ const MenuComponent = () => {
               onPress={() => handleNavigation('/weekFilter')}
               activeOpacity={0.75}
             >
-              <MaterialIcons name="date-range" size={28} color="#fff" />
+              <Image
+                source={require('@/assets/icons/date_range.png')}
+                style={{
+                  width: 28,
+                  height: 28,
+                  tintColor: '#fff'
+                }}
+              />
               <Text style={styles.modalText}>Semana</Text>
             </TouchableOpacity>
 
@@ -66,7 +101,14 @@ const MenuComponent = () => {
               onPress={() => handleNavigation('/monthFilter')}
               activeOpacity={0.75}
             >
-              <MaterialIcons name="calendar-month" size={28} color="#fff" />
+              <Image
+                source={require('@/assets/icons/calendar_month.png')}
+                style={{
+                  width: 28,
+                  height: 28,
+                  tintColor: '#fff'
+                }}
+              />
               <Text style={styles.modalText}>Mês</Text>
             </TouchableOpacity>
 

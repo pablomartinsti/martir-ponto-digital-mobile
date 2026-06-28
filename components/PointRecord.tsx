@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Image } from 'react-native';
 import { formatTime, weekDays } from '@/utils/dateUtils';
 import globalStyles from '@/styles/globalStyles';
 import { format, parseISO } from 'date-fns';
@@ -29,22 +29,50 @@ export default function PointRecord({ record }: PointRecordProps) {
       <View style={globalStyles.containerTime}>
         <View style={globalStyles.boxTime}>
           <View style={globalStyles.pointTime}>
-            <MaterialIcons name="arrow-forward" size={28} color="#00ff15" />
+            <Image
+              source={require('@/assets/icons/arrow_forward.png')}
+              style={{
+                width: 28,
+                height: 28,
+                tintColor: '#00ff15'
+              }}
+            />
             <Text style={globalStyles.timeText}>{formatTime(record.clockIn)}</Text>
           </View>
 
           <View style={globalStyles.pointTime}>
-            <MaterialIcons name="arrow-back" size={28} color="#ff0000" />
+            <Image
+              source={require('@/assets/icons/arrow_back.png')}
+              style={{
+                width: 28,
+                height: 28,
+                tintColor: '#ff0000'
+              }}
+            />
             <Text style={globalStyles.timeText}>{formatTime(record.lunchStart)}</Text>
           </View>
 
           <View style={globalStyles.pointTime}>
-            <MaterialIcons name="arrow-forward" size={28} color="#00ff15" />
+            <Image
+              source={require('@/assets/icons/arrow_forward.png')}
+              style={{
+                width: 28,
+                height: 28,
+                tintColor: '#00ff15'
+              }}
+            />
             <Text style={globalStyles.timeText}>{formatTime(record.lunchEnd)}</Text>
           </View>
 
           <View style={globalStyles.pointTime}>
-            <MaterialIcons name="arrow-back" size={28} color="#ff0000" />
+            <Image
+              source={require('@/assets/icons/arrow_back.png')}
+              style={{
+                width: 28,
+                height: 28,
+                tintColor: '#ff0000'
+              }}
+            />
             <Text style={globalStyles.timeText}>{formatTime(record.clockOut)}</Text>
           </View>
         </View>
